@@ -9,6 +9,14 @@ uses
   KLib.Types, KLib.Windows;
 
 type
+
+  TMySQLCredentials = record
+    credentials: TCredentials;
+    server: string;
+    port: integer;
+    database: string;
+  end;
+
   TMySQLIniManipulator = class(TIniFile)
   private
     function getPort: integer;
@@ -163,7 +171,7 @@ procedure TMySQLIniManipulator.set_loose_keyring_file_data(value: string);
 var
   _pathInLinuxStyle: string;
 begin
-  _pathInLinuxStyle := StringReplace(value, '\', '/', [rfReplaceAll, rfIgnoreCase]);
+  _pathInLinuxStyle := getPathInLinuxStyle(value);
   WriteString('mysqld', 'loose_keyring_file_data', _pathInLinuxStyle);
 end;
 
@@ -176,7 +184,7 @@ procedure TMySQLIniManipulator.setSecurefilepriv(value: string);
 var
   _pathInLinuxStyle: string;
 begin
-  _pathInLinuxStyle := StringReplace(value, '\', '/', [rfReplaceAll, rfIgnoreCase]);
+  _pathInLinuxStyle := getPathInLinuxStyle(value);
   WriteString('mysqld', 'secure-file-priv', _pathInLinuxStyle);
 end;
 
@@ -189,7 +197,7 @@ procedure TMySQLIniManipulator.setDatadir(value: string);
 var
   _pathInLinuxStyle: string;
 begin
-  _pathInLinuxStyle := StringReplace(value, '\', '/', [rfReplaceAll, rfIgnoreCase]);
+  _pathInLinuxStyle := getPathInLinuxStyle(value);
   WriteString('mysqld', 'datadir', _pathInLinuxStyle);
 end;
 
@@ -646,7 +654,7 @@ end;
 
 procedure TMySQLProcess.setPort;
 const
-  portMySQL = 3306;
+  portMySQL = 3308;
 begin
   port := getFirstPortAvaliable(portMySQL);
   connectionDB.Port := port;
@@ -777,7 +785,6 @@ const
     'The installer will run.';
   MSG_ERROR = 'Visual C++ Redistributable Visual Studio 2013 not correctly installed.';
 var
-  nameResource: string;
   pathFileName: string;
   pathCurrentDir: string;
 begin
@@ -812,7 +819,6 @@ end;
 
 function checkLibVisualStudio2013: boolean;
 var
-  reg: TRegistry;
   versionSO: string;
 begin
   result := false;
