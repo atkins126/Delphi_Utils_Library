@@ -3,7 +3,7 @@ unit KLib.Windows;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages,
+  Winapi.Windows, Winapi.Messages, Winapi.ShellApi,
   System.Classes,
   KLib.Types;
 
@@ -27,13 +27,16 @@ type
   TWindowsService = class
     class procedure aStart(handleSender: HWND; nameService: string; nameMachine: string = '');
     class procedure start(nameService: string; nameMachine: string = '');
-    class procedure stop(nameService: string; nameMachine: string = ''; force: boolean = false);
+    class procedure stopIfExists(nameService: string; nameMachine: string = '';
+      force: boolean = false);
+    class procedure stop(nameService: string; nameMachine: string = '';
+      force: boolean = false);
     class function isRunning(nameService: string; nameMachine: string = ''): boolean;
     class function existsService(nameService: string; nameMachine: string = ''): boolean;
     class procedure deleteService(nameService: string);
     class function isPortAvaliable(host: string; port: Word): boolean;
   protected
-    function createService: boolean; overload; virtual; abstract; //TODO
+    function createService: boolean; overload; virtual; abstract; //TODO IMPLEMENTE CODE
   end;
 
   //----------------------------------
@@ -41,6 +44,7 @@ function getFirstPortAvaliable(defaultPort: integer): integer;
 
 function runUnderWine: boolean;
 function getVersionSO: string;
+function IsUserAnAdmin: boolean; external shell32;
 
 procedure shellExecuteAndWait(fileName: string; params: string; runAsAdmin: boolean = true;
   showWindow: cardinal = SW_HIDE);
@@ -75,7 +79,7 @@ implementation
 uses
   System.IOUtils, System.SysUtils,
   System.Win.ComObj, System.Win.Registry,
-  Winapi.AccCtrl, Winapi.ACLAPI, Winapi.ShellAPI, Winapi.TLHelp32, Winapi.ActiveX, Winapi.Winsvc, Winapi.Shlobj,
+  Winapi.AccCtrl, Winapi.ACLAPI, Winapi.TLHelp32, Winapi.ActiveX, Winapi.Winsvc, Winapi.Shlobj,
   Vcl.Forms,
   IdTCPClient,
   KLib.Utils;
@@ -114,7 +118,8 @@ end;
 
 //----------------------------------------------------------------------------------------
 
-class procedure TWindowsService.aStart(handleSender: HWND; nameService: string; nameMachine: string = '');
+class procedure TWindowsService.aStart(handleSender: HWND; nameService: string;
+  nameMachine: string = '');
 begin
   TThread.CreateAnonymousThread(
     procedure
@@ -206,7 +211,17 @@ begin
   CloseServiceHandle(handleServiceControlManager);
 end;
 
-class procedure TWindowsService.Stop(nameService: string; nameMachine: string = ''; force: boolean = false);
+class procedure TWindowsService.stopIfExists(nameService: string; nameMachine: string = '';
+force: boolean = false);
+begin
+  if existsService(nameService) then
+  begin
+    stop(nameService, nameMachine, force);
+  end;
+end;
+
+class procedure TWindowsService.Stop(nameService: string; nameMachine: string = '';
+force: boolean = false);
 const
   ERR_MSG = 'Service not stopped';
 var

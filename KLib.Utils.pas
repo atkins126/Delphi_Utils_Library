@@ -22,7 +22,7 @@ procedure deleteFileIfExists(fileName: string);
 function getDirExe: string;
 procedure createDirIfNotExists(const dirName: string);
 procedure createHideDir(const path: string; forceDelete: boolean = false);
-procedure deleteDirectory(const dirName: string);
+procedure deleteDirectory(dirName: string);
 
 function checkIfIsLinuxSubfolder(mainFolder: string; subFolder: string): boolean;
 function getPathInLinuxStyle(path: string): string;
@@ -42,8 +42,16 @@ procedure getResourceAsFile(nameResource: String; typeResource: string; destinat
 function readStringWithEnvVariables(source: string): string;
 function getIPAddress: string;
 
-function getCurrentDayOfWeek: string;
-function getDayOfWeek(date: TDateTime): string;
+function currentDayOfWeekAsString: string;
+function dayOfWeekAsString(date: TDateTime): string;
+function currentDateTimeAsString: string;
+function dateTimeAsString(date: TDateTime): string;
+function currentDateAsString: string;
+function dateAsString(date: TDateTime): string;
+
+function getNumberOfLinesInStrFixedWordWrap(source: String): integer;
+function strToStrFixedWordWrap(source: String; fixedLen: Integer): String;
+function strToStringList(source: String; fixedLen: Integer): TStringList;
 
 procedure downloadZipFileAndExtract(downloadInfo: TDownloadInfo; destinationPath: string;
   forceOverWrite: boolean = true; forceDeleteZipFile: boolean = true);
@@ -54,7 +62,7 @@ function getValidFTPConnection(FTPCredentials: TFTPCredentials): TIdFTP;
 procedure validateFTPCredentials(FTPCredentials: TFTPCredentials);
 function getFTPConnection(FTPCredentials: TFTPCredentials): TIdFTP;
 
-procedure executeProcedure(myProcedure: TProcedure); overload;
+procedure executeProcedure(myProcedure: TAnonymousMethod); overload;
 procedure executeProcedure(myProcedure: TCallBack); overload;
 
 implementation
@@ -160,7 +168,7 @@ begin
   end;
 end;
 
-procedure deleteDirectory(const dirName: string);
+procedure deleteDirectory(dirName: string);
 var
   FileOp: TSHFileOpStruct;
 begin
@@ -169,6 +177,10 @@ begin
   FileOp.pFrom := PChar(DirName + #0); //double zero-terminated
   FileOp.fFlags := FOF_SILENT or FOF_NOERRORUI or FOF_NOCONFIRMATION;
   SHFileOperation(FileOp);
+  if DirectoryExists(dirName) then
+  begin
+    raise Exception.Create('Unable to delete ' + dirName);
+  end;
 end;
 
 function checkIfIsLinuxSubfolder(mainFolder: string; subFolder: string): boolean;
@@ -370,15 +382,15 @@ begin
   WSACleanup;
 end;
 
-function getCurrentDayOfWeek: string;
+function currentDayOfWeekAsString: string;
 var
   _nameDay: string;
 begin
-  _nameDay := getDayOfWeek(Now);
+  _nameDay := dayOfWeekAsString(Now);
   result := _nameDay;
 end;
 
-function getDayOfWeek(date: TDateTime): string;
+function dayOfWeekAsString(date: TDateTime): string;
 const
   DAYS_OF_WEEK: TArray<String> = [
     'Sunday',
@@ -395,6 +407,79 @@ begin
   _indexDayOfWeek := DayOfWeek(date) - 1;
   _nameDay := DAYS_OF_WEEK[_indexDayOfWeek];
   result := _nameDay;
+end;
+
+function currentDateTimeAsString: string;
+begin
+  result := dateTimeAsString(Now);
+end;
+
+function dateTimeAsString(date: TDateTime): string;
+var
+  _date: string;
+  _time: string;
+  _dateTime: string;
+begin
+  _date := dateAsString(date);
+  _time := TimeToStr(date);
+  _time := StringReplace(_time, ':', '', [rfReplaceAll, rfIgnoreCase]);
+  _dateTime := _date + '_' + _time;
+  result := _dateTime;
+end;
+
+function currentDateAsString: string;
+begin
+  result := dateAsString(Now);
+end;
+
+function dateAsString(date: TDateTime): string;
+var
+  _date: string;
+begin
+  _date := DateToStr(date);
+  _date := StringReplace(_date, '/', '_', [rfReplaceAll, rfIgnoreCase]);
+  result := _date;
+end;
+
+function getNumberOfLinesInStrFixedWordWrap(source: String): integer;
+var
+  _stringList: TStringList;
+begin
+  _stringList := TStringList.Create;
+  _stringList.Text := source;
+  result := _stringList.Count;
+  FreeAndNil(_stringList);
+end;
+
+function strToStrFixedWordWrap(source: String; fixedLen: Integer): String;
+var
+  _stringList: TStringList;
+begin
+  _stringList := strToStringList(source, fixedLen);
+  result := _stringList.Text;
+  FreeAndNil(_stringList);
+end;
+
+function strToStringList(source: String; fixedLen: Integer): TStringList;
+var
+  idx: Integer;
+  srcLen: Integer;
+  alist: TStringList;
+begin
+  alist := TStringList.Create;
+  alist.LineBreak := #13;
+  aList.Capacity := (Length(source) div fixedLen) + 1;
+
+  idx := 1;
+  srcLen := Length(source);
+
+  while idx <= srcLen do
+  begin
+    aList.Add(Copy(source, idx, fixedLen));
+    Inc(idx, fixedLen);
+  end;
+
+  result := alist;
 end;
 
 procedure downloadZipFileAndExtract(downloadInfo: TDownloadInfo; destinationPath: string;
@@ -516,7 +601,7 @@ begin
   end;
 end;
 
-procedure executeProcedure(myProcedure: TProcedure);
+procedure executeProcedure(myProcedure: TAnonymousMethod);
 begin
   myProcedure;
 end;
