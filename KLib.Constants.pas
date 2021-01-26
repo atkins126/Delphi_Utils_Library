@@ -34,89 +34,55 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.Types;
+unit KLib.Constants;
 
 interface
 
-uses
-  Vcl.Graphics,
-  IdFTPCommon;
+const
+  LOCALHOST_IP_ADDRESS = '127.0.0.1';
 
-type
+  _1_MB_IN_BYTES = 1048576;
 
-  TCredentials = record
-    username: string;
-    password: string;
-  end;
+  CMD_EXE_NAME = 'cmd.exe';
 
-  TFTPCredentials = record
-    credentials: TCredentials;
-    server: string;
-    pathFTPDir: string;
-    transferType: TIdFTPTransferType;
-  end;
+  PNG_TYPE = 'PNG';
+  ZIP_TYPE = 'ZIP';
+  XSL_TYPE = 'XSL';
+  EXE_TYPE = 'EXE';
+  JSON_TYPE = 'JSON';
+  RTF_TYPE = 'RTF';
+  DLL_TYPE = 'DLL';
 
-  TDownloadInfo = record
-    link: string;
-    fileName: string;
-    typeFile: string;
-    md5: string;
-  end;
+  EVERYONE_GROUP = 'Everyone';
+  USERS_GROUP = 'Users';
 
-  TArrayOfDownloadInfo = array of TDownloadInfo;
+  C_DRIVE = 'C';
 
-  TPIDCredentials = record
-    ownerUserName: string;
-    domain: string;
-  end;
+  RANDOM_STRING = '99~@(To4h7KeFSX|{T2M';
+  EMPTY_STRING = '';
+  FORCE_OVERWRITE = true;
 
-  TColorButtom = record
-    enabled: TColor;
-    disabled: TColor;
-  end;
+  //Keystroke Message Flag
+  //https://docs.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input
+  //https://www.win.tue.nl/~aeb/linux/kbd/scancodes-1.html
+  //Keystroke Message Flag impostato ad 1835009 (DECIMAL VALUE) che in binario corrisponde a 0000000000111000000000000000001
+  // l_param
+  //i valori dallo 0 al 15 specificano il numero di volte che e' stato premuto il tasto
+  //(nel nostro caso 0000000000000001)
+  //i valori dal 16-23 specificano lo scan code e questo dipende dal produtttore OEM
+  //(nel nostro caso 00011100) tastiera Logitech K120
+  //il valore 24 se settato a 1 indica se il tasto premuto e' uno steso, come ad esempio un tasto funzione o numerico
+  //(nel nostro caso 0)
+  //i valori dal 25-28 sono riservati
+  //(nel nostro caso 0000)
+  //il valore 24 se settato a 1 indica se il tasto premuto il pulsante ALT
+  //(nel nostro caso 0)
+  //il valore 30 se settato a 1 indica che lo stato precedente del tasto era key_down
+  //(nel nostro caso 0)
+  //il valore 31 se settato a 1 indica che lo stato transitorio del tasto e' stato appena rilasciato
+  //(nel nostro caso 0)
 
-  TPosition = record
-    top: integer;
-    bottom: integer;
-    left: integer;
-    right: integer;
-  end;
-
-  TSize = record
-    width: integer;
-    height: integer;
-  end;
-
-  TResource = record
-    name: string;
-    _type: string;
-  end;
-
-  TTypeOfProcedure = (_procedure, _method, _anonymousMethod);
-
-  TAnonymousMethod = reference to procedure;
-  TArrayOfAnonymousMethods = array of TAnonymousMethod;
-
-  TMethod = procedure of object;
-  TArrayOfMethods = array of TMethod;
-
-  TProcedure = procedure;
-  TArrayOfProcedures = array of TProcedure;
-
-  TCallBack = reference to procedure(msg: string = '');
-
-  TCallBacks = record
-    resolve: TCallBack;
-    reject: TCallBack;
-  end;
-
-  TAsyncifyMethodReply = record
-    handle: THandle;
-    msg_resolve: Cardinal;
-    msg_reject: Cardinal;
-  end;
-
-  TAsyncMethodStatus = (created, pending, fulfilled, rejected);
+  KF_CODE_ENTER = 1835009;
 
 implementation
 
