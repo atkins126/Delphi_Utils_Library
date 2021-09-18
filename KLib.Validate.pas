@@ -40,7 +40,8 @@ interface
 
 uses
   KLib.Types,
-  Vcl.StdCtrls, Vcl.Forms;
+  Vcl.StdCtrls, Vcl.Forms,
+  Xml.XMLIntf;
 
 //------REGEX----------
 procedure validateThatEmailIsValid(email: string; errMsg: string = 'Invalid email.');
@@ -66,6 +67,10 @@ procedure validateThatFileExistsAndEmpty(fileName: string; errMsg: string = 'Fil
 
 procedure validateThatFileNotExists(fileName: string; errMsg: string = 'File already exists.');
 procedure validateThatFileExists(fileName: string; errMsg: string = 'File doens''t exists.');
+
+procedure validateThatIXMLNodeExistsInIXMLNode(mainNode: IXMLNode; childNodeName: string; errMsg: string = 'Node not exists.');
+procedure validateIXMLNodeName(mainNode: IXMLNode; expectedNodeName: string; errMsg: string = 'Node not expected.');
+procedure validateThatAttributeExistsInIXMLNode(mainNode: IXMLNode; attributeName: string; errMsg: string = 'Attribute not exists in node.');
 
 procedure validateMD5File(fileName: string; MD5: string; errMsg: string = 'MD5 check failed.');
 
@@ -99,31 +104,14 @@ procedure tryToValidate(validatingMethod: TMethod; errorLabel: TLabel);
 implementation
 
 uses
-  KLib.Utils, KLib.Windows, KLib.Constants,
-  System.RegularExpressions, System.SysUtils;
-
-const
-  REGEX_VALID_EMAIL = '([!#-''*+/-9=?A-Z^-~-]+(\.[!#-''*+/-9=?A-Z^-~-]+)*|"([]!#-[^-~ \t]|(\\[\t -~]))+")@([0'
-    + '-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])?(\.[0-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])'
-    + '?)*|\[((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1'
-    + '-9]?[0-9])){3}|IPv6:((((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){6}|::((0|[1-9A-Fa-f][0-9A-Fa-'
-    + 'f]{0,3}):){5}|[0-9A-Fa-f]{0,4}::((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){4}|(((0|[1-9A-Fa-f]'
-    + '[0-9A-Fa-f]{0,3}):)?(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}'
-    + '):){3}|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){0,2}(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::((0|'
-    + '[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){2}|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){0,3}(0|[1-9A-Fa-'
-    + 'f][0-9A-Fa-f]{0,3}))?::(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,'
-    + '3}):){0,4}(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::)((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):(0|[1-9'
-    + 'A-Fa-f][0-9A-Fa-f]{0,3})|(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4]'
-    + '[0-9]|1[0-9]{2}|[1-9]?[0-9])){3})|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){0,5}(0|[1-9A-Fa-'
-    + 'f][0-9A-Fa-f]{0,3}))?::(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3})|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3'
-    + '}):){0,6}(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::)|(?!IPv6:)[0-9A-Za-z-]*[0-9A-Za-z]:[!-Z^-'
-    + '~]+)])';
+  KLib.Utils, KLib.Windows, KLib.WindowsService, KLib.Constants, KLib.Indy, KLib.XML,
+  System.SysUtils;
 
 procedure validateThatEmailIsValid(email: string; errMsg: string = 'Invalid email.');
 var
   _errMsg: string;
 begin
-  if not TRegEx.IsMatch(email, REGEX_VALID_EMAIL) then
+  if not checkIfEmailIsValid(email) then
   begin
     _errMsg := getDoubleQuotedString(email) + ' : ' + errMsg;
     raise Exception.Create(_errMsg);
@@ -134,7 +122,7 @@ procedure validateThatServiceNotExists(nameService: string; errMsg: string = 'Se
 var
   _errMsg: string;
 begin
-  if TWindowsService.existsService(nameService) then
+  if TWindowsService.checkIfExists(nameService) then
   begin
     _errMsg := getDoubleQuotedString(nameService) + ' : ' + errMsg;
     raise Exception.Create(_errMsg);
@@ -145,7 +133,7 @@ procedure validateThatServiceExists(nameService: string; errMsg: string = 'Servi
 var
   _errMsg: string;
 begin
-  if not TWindowsService.existsService(nameService) then
+  if not TWindowsService.checkIfExists(nameService) then
   begin
     _errMsg := getDoubleQuotedString(nameService) + ' : ' + errMsg;
     raise Exception.Create(_errMsg);
@@ -274,6 +262,39 @@ begin
   if not FileExists(fileName) then
   begin
     _errMsg := getDoubleQuotedString(fileName) + ' : ' + errMsg;
+    raise Exception.Create(_errMsg);
+  end;
+end;
+
+procedure validateThatIXMLNodeExistsInIXMLNode(mainNode: IXMLNode; childNodeName: string; errMsg: string = 'Node not exists.');
+var
+  _errMsg: string;
+begin
+  if not checkIfIXMLNodeExistsInIXMLNode(mainNode, childNodeName) then
+  begin
+    _errMsg := getDoubleQuotedString(childNodeName) + ' : ' + errMsg;
+    raise Exception.Create(_errMsg);
+  end;
+end;
+
+procedure validateIXMLNodeName(mainNode: IXMLNode; expectedNodeName: string; errMsg: string = 'Node not expected.');
+var
+  _errMsg: string;
+begin
+  if not checkIXMLNodeName(mainNode, expectedNodeName) then
+  begin
+    _errMsg := getDoubleQuotedString(expectedNodeName) + ' : ' + errMsg;
+    raise Exception.Create(_errMsg);
+  end;
+end;
+
+procedure validateThatAttributeExistsInIXMLNode(mainNode: IXMLNode; attributeName: string; errMsg: string = 'Attribute not exists in node.');
+var
+  _errMsg: string;
+begin
+  if not checkIfAttributeExistsInIXMLNode(mainNode, attributeName) then
+  begin
+    _errMsg := getDoubleQuotedString(attributeName) + ' : ' + errMsg;
     raise Exception.Create(_errMsg);
   end;
 end;

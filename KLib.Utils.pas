@@ -39,29 +39,14 @@ unit KLib.Utils;
 interface
 
 uses
-  KLib.Types,
+  KLib.Types, KLib.Constants,
   Vcl.Imaging.pngimage,
-  Xml.XMLIntf,
-  IdFTP,
   System.SysUtils, System.Classes;
 
-const
-  _DEFAULT_ERROR_STRING_VALUE_INI_FILES = '*_/&@';
-
-type
-  TUTF8NoBOMEncoding = class(TUTF8Encoding)
-  public
-    function GetPreamble: TBytes; override;
-  end;
-
-function getIntValueFromIniFile(fileNameIni: string; nameSection: string; nameProperty: string): integer; overload;
-function getIntValueFromIniFile(fileNameIni: string; nameSection: string; nameProperty: string;
-  defaultPropertyValue: integer): integer; overload;
-function getStringValueFromIniFile(fileNameIni: string; nameSection: string; nameProperty: string;
-  defaultPropertyValue: string = _DEFAULT_ERROR_STRING_VALUE_INI_FILES): string;
-
+procedure deleteFilesInDirWithStartingFileName(dirName: string; startingFileName: string; fileType: string = EMPTY_STRING);
 function checkIfFileExistsAndEmpty(fileName: string): boolean;
 procedure deleteFileIfExists(fileName: string);
+function getTextFromFile(fileName: string): string;
 
 function checkIfThereIsSpaceAvailableOnDrive(drive: char; requiredSpaceInBytes: int64): boolean;
 function getFreeSpaceOnDrive(drive: char): int64;
@@ -79,114 +64,96 @@ function checkIfIsSubDir(subDir: string; mainDir: string): boolean;
 function getValidFullPath(fileName: string): string;
 
 function checkMD5File(fileName: string; MD5: string): boolean;
-function getMD5ChecksumFile(fileName: string): string;
 
 procedure unzipResource(nameResource: string; destinationDir: string);
-function getPNGResource(nameResource: String): TPngImage;
-procedure getResourceAsEXEFile(nameResource: String; destinationFileName: string);
-procedure getResourceAsZIPFile(nameResource: String; destinationFileName: string);
+function getPNGResource(nameResource: string): TPngImage;
+procedure getResourceAsEXEFile(nameResource: string; destinationFileName: string);
+procedure getResourceAsZIPFile(nameResource: string; destinationFileName: string);
 procedure getResourceAsFile(resource: TResource; destinationFileName: string);
-function getResourceAsXSL(nameResource: string): IXMLDocument;
 function getResourceAsString(resource: TResource): string;
 function getResourceAsStream(resource: TResource): TResourceStream;
 
-//USING INDY YOU NEED libeay32.dll AND libssl32.dll
-procedure downloadZipFileAndExtractWithIndy(info: TDownloadInfo; forceOverwrite: boolean;
-  destinationPath: string; forceDeleteZipFile: boolean = false);
-procedure downloadFileWithIndy(info: TDownloadInfo; forceOverwrite: boolean);
-procedure getOpenSSLDLLsFromResource;
-procedure deleteOpenSSLDLLsIfExists;
-
 procedure unzip(zipFileName: string; destinationDir: string; deleteZipAfterUnzip: boolean = false);
 
-function getValidFTPConnection(FTPCredentials: TFTPCredentials): TIdFTP;
-function checkFTPCredentials(FTPCredentials: TFTPCredentials): boolean;
 function checkRequiredFTPProperties(FTPCredentials: TFTPCredentials): boolean;
-function getFTPConnection(FTPCredentials: TFTPCredentials): TIdFTP;
-
-procedure executeProcedure(myProcedure: TAnonymousMethod); overload;
-procedure executeProcedure(myProcedure: TCallBack); overload;
 
 function getValidTelephoneNumber(number: string): string;
+
+function getRandString(size: integer = 5): string;
+
+function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): string;
+function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TstringList;
+
+function getCombinedPath(path1: string; path2: string): string;
 
 function getCurrentDayOfWeekAsString: string;
 function getDayOfWeekAsString(date: TDateTime): string;
 function getCurrentDateTimeAsString: string;
 function getDateTimeAsString(date: TDateTime): string;
 function getCurrentDateAsString: string;
-function getDateAsString(date: TDateTime): string;
-function getRandString(size: integer = 5): string;
+function getDateAsString(date: TDateTime): string; //TODO REVIEW NAME?
+function getCurrentTimeStamp: string;
+function getCurrentDateTimeAsStringWithFormatting(formatting: string = DATE_FORMAT): string;
+function getDateTimeAsStringWithFormatting(value: TDateTime; formatting: string = DATE_FORMAT): string;
+function getCurrentDateTime: TDateTime;
 
-function getDoubleQuotedString(value: string): string;
-function getSingleQuotedString(value: string): string;
-function getSubStringInsertedIntoString(mainString: string; insertedString: string; index: integer): string;
+function getParsedXMLstring(mainString: string): string; //todo add to myString
+function getDoubleQuotedString(mainString: string): string;
+function getSingleQuotedString(mainString: string): string;
+function getMainStringWithSubStringInserted(mainString: string; insertedString: string; index: integer): string;
+function getStringWithoutLineBreaks(mainString: string; substituteString: string = SPACE_string): string;
 
-function getNumberOfLinesInStrFixedWordWrap(source: String): integer;
-function strToStrFixedWordWrap(source: String; fixedLen: Integer): String;
-function strToStringList(source: String; fixedLen: Integer): TStringList;
+function getCSVFieldFromStringAsDate(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): TDate; overload;
+function getCSVFieldFromStringAsDate(mainString: string; index: integer; formatSettings: TFormatSettings; delimiter: Char = SEMICOLON_DELIMITER): TDate; overload;
+function getCSVFieldFromStringAsDouble(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): Double; overload;
+function getCSVFieldFromStringAsDouble(mainString: string; index: integer; formatSettings: TFormatSettings; delimiter: Char = SEMICOLON_DELIMITER): Double; overload;
+function getCSVFieldFromStringAsInteger(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): integer;
+function getCSVFieldFromString(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): string;
+
+function getNumberOfLinesInStrFixedWordWrap(source: string): integer;
+function strToStrFixedWordWrap(source: string; fixedLen: Integer): string;
+function strToStringList(source: string; fixedLen: Integer): TstringList;
+function stringToStringListWithDelimiter(value: string; delimiter: Char): TstringList;
 
 procedure splitStrings(source: string; delimiter: string; var destFirstString: string; var destSecondString: string);
-function getMergedStrings(firstString: string; secondString: string; delimiter: string = ''): string;
+function getMergedStrings(firstString: string; secondString: string; delimiter: string = EMPTY_STRING): string;
+
+function checkIfEmailIsValid(email: string): boolean;
+
+function checkIfMainStringContainsSubStringNoCaseSensitive(mainString: string; subString: string): boolean;
+function checkIfMainStringContainsSubString(mainString: string; subString: string; caseSensitiveSearch: boolean = true): boolean;
+
+procedure tryToExecuteProcedure(myProcedure: TAnonymousMethod; raiseExceptionEnabled: boolean = false); overload;
+procedure tryToExecuteProcedure(myProcedure: TCallBack; raiseExceptionEnabled: boolean = false); overload;
+procedure tryToExecuteProcedure(myProcedure: TProcedure; raiseExceptionEnabled: boolean = false); overload;
+procedure executeProcedure(myProcedure: TAnonymousMethod); overload;
+procedure executeProcedure(myProcedure: TCallBack); overload;
 
 implementation
 
 uses
-  KLib.Validate, KLib.Constants,
+  KLib.Validate, KLib.Indy,
   Vcl.ExtCtrls,
-  Xml.XMLDoc,
-  IdGlobal, IdHash, IdHashMessageDigest, IdHTTP, IdSSLOpenSSL,
-  System.Zip, System.IOUtils, System.StrUtils, System.IniFiles, System.Character;
+  System.Zip, System.IOUtils, System.StrUtils, System.Character, System.RegularExpressions, System.Variants;
 
-function TUTF8NoBOMEncoding.getPreamble: TBytes;
-begin
-  SetLength(Result, 0);
-end;
-
-function getIntValueFromIniFile(fileNameIni: string; nameSection: string; nameProperty: string): integer;
-var
-  _stringValue: string;
-  _intValue: integer;
-begin
-  _stringValue := getStringValueFromIniFile(fileNameIni, nameSection, nameProperty);
-  _intValue := StrToInt(_stringValue);
-  Result := _intValue;
-end;
-
-function getIntValueFromIniFile(fileNameIni: string; nameSection: string; nameProperty: string;
-  defaultPropertyValue: integer): integer;
-var
-  _pathIniFile: string;
-  _iniManipulator: TIniFile;
-  value: integer;
-begin
-  _pathIniFile := getValidFullPath(fileNameIni);
-  validateThatFileExists(_pathIniFile);
-  _iniManipulator := TIniFile.Create(_pathIniFile);
-  value := _iniManipulator.ReadInteger(nameSection, nameProperty, defaultPropertyValue);
-  FreeAndNil(_iniManipulator);
-
-  Result := value;
-end;
-
-function getStringValueFromIniFile(fileNameIni: string; nameSection: string; nameProperty: string;
-  defaultPropertyValue: string = _DEFAULT_ERROR_STRING_VALUE_INI_FILES): string;
+procedure deleteFilesInDirWithStartingFileName(dirName: string; startingFileName: string; fileType: string = EMPTY_STRING);
 const
-  ERR_MSG = 'No property assigned.';
+  IGNORE_CASE = true;
 var
-  _pathIniFile: string;
-  _iniManipulator: TIniFile;
-  value: string;
+  _files: TstringList;
+  _file: string;
+  _fileName: string;
 begin
-  _pathIniFile := getValidFullPath(fileNameIni);
-  validateThatFileExists(_pathIniFile);
-  _iniManipulator := TIniFile.Create(_pathIniFile);
-  value := _iniManipulator.ReadString(nameSection, nameProperty, defaultPropertyValue);
-  FreeAndNil(_iniManipulator);
-  if value = _DEFAULT_ERROR_STRING_VALUE_INI_FILES then
+  _files := getFileNamesListInDir(dirName, fileType);
+  for _file in _files do
   begin
-    raise Exception.Create(ERR_MSG);
+    _fileName := ExtractFileName(_file);
+    if _fileName.StartsWith(startingFileName, IGNORE_CASE) then
+    begin
+      deleteFileIfExists(_file);
+    end;
   end;
-  Result := value;
+  FreeAndNil(_files);
 end;
 
 function checkIfFileExistsAndEmpty(fileName: string): boolean;
@@ -219,6 +186,21 @@ begin
       raise Exception.Create(ERR_MSG);
     end;
   end;
+end;
+
+function getTextFromFile(fileName: string): string;
+var
+  text: string;
+  _stringList: TstringList;
+begin
+  _stringList := TstringList.Create;
+  try
+    _stringList.LoadFromFile(fileName);
+    text := _stringList.Text;
+  finally
+    _stringList.Free;
+  end;
+  Result := text;
 end;
 
 function checkIfThereIsSpaceAvailableOnDrive(drive: char; requiredSpaceInBytes: int64): boolean;
@@ -314,7 +296,7 @@ var
   _currentDir: string;
 begin
   _currentDir := getDirExe;
-  _result := TPath.Combine(_currentDir, pathToCombine);
+  _result := getCombinedPath(_currentDir, pathToCombine);
   Result := _result;
 end;
 
@@ -352,7 +334,7 @@ function getPathInLinuxStyle(path: string): string;
 var
   _path: string;
 begin
-  _path := StringReplace(path, '\', '/', [rfReplaceAll, rfIgnoreCase]);
+  _path := stringReplace(path, '\', '/', [rfReplaceAll, rfIgnoreCase]);
   result := _path;
 end;
 
@@ -391,18 +373,6 @@ begin
   end;
 end;
 
-function getMD5ChecksumFile(fileName: string): string;
-var
-  MD5: TIdHashMessageDigest5;
-  fileStream: TFileStream;
-begin
-  MD5 := TIdHashMessageDigest5.Create;
-  fileStream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyWrite);
-  Result := MD5.HashStreamAsHex(fileStream);
-  fileStream.Free;
-  MD5.Free;
-end;
-
 procedure unzipResource(nameResource: string; destinationDir: string);
 const
   DELETE_ZIP_AFTER_UNZIP = TRUE;
@@ -410,12 +380,12 @@ var
   _tempZipFileName: string;
 begin
   _tempZipFileName := getRandString + '.' + ZIP_TYPE;
-  _tempZipFileName := TPath.Combine(destinationDir, _tempZipFileName);
+  _tempZipFileName := getCombinedPath(destinationDir, _tempZipFileName);
   getResourceAsZIPFile(nameResource, _tempZipFileName);
   unzip(_tempZipFileName, destinationDir, DELETE_ZIP_AFTER_UNZIP);
 end;
 
-function getPNGResource(nameResource: String): TPngImage;
+function getPNGResource(nameResource: string): TPngImage;
 var
   _resource: TResource;
   resourceStream: TResourceStream;
@@ -435,12 +405,12 @@ end;
 
 procedure _getResourceAsFile_(nameResource: string; typeResource: string; destinationFileName: string); forward;
 
-procedure getResourceAsEXEFile(nameResource: String; destinationFileName: string);
+procedure getResourceAsEXEFile(nameResource: string; destinationFileName: string);
 begin
   _getResourceAsFile_(nameResource, EXE_TYPE, destinationFileName);
 end;
 
-procedure getResourceAsZIPFile(nameResource: String; destinationFileName: string);
+procedure getResourceAsZIPFile(nameResource: string; destinationFileName: string);
 begin
   _getResourceAsFile_(nameResource, ZIP_TYPE, destinationFileName);
 end;
@@ -466,31 +436,15 @@ begin
   resourceStream.Free;
 end;
 
-function getResourceAsXSL(nameResource: string): IXMLDocument;
-var
-  _resource: TResource;
-  _resourceAsString: string;
-  xls: IXMLDocument;
-begin
-  with _resource do
-  begin
-    name := nameResource;
-    _type := XSL_TYPE;
-  end;
-  _resourceAsString := getResourceAsString(_resource);
-  xls := LoadXMLData(_resourceAsString);
-  Result := xls;
-end;
-
 function getResourceAsString(resource: TResource): string;
 var
   resourceStream: TResourceStream;
-  _stringList: TStringList;
-  resourceAsString: String;
+  _stringList: TstringList;
+  resourceAsString: string;
 begin
   resourceAsString := '';
   resourceStream := getResourceAsStream(resource);
-  _stringList := TStringList.Create;
+  _stringList := TstringList.Create;
   _stringList.LoadFromStream(resourceStream);
   resourceAsString := _stringList.Text;
   resourceStream.Free;
@@ -518,95 +472,6 @@ begin
   Result := resourceStream;
 end;
 
-//USING INDY YOU NEED libeay32.dll AND libssl32.dll
-procedure downloadZipFileAndExtractWithIndy(info: TDownloadInfo; forceOverwrite: boolean;
-  destinationPath: string; forceDeleteZipFile: boolean = false);
-var
-  pathZipFile: string;
-begin
-  downloadFileWithIndy(info, forceOverwrite);
-  pathZipFile := TPath.Combine(destinationPath, info.fileName);
-  unzip(pathZipFile, destinationPath, forceDeleteZipFile);
-end;
-
-procedure downloadFileWithIndy(info: TDownloadInfo; forceOverwrite: boolean);
-const
-  ERR_MSG = 'Error downloading file.';
-var
-  indyHTTP: TIdHTTP;
-  ioHandler: TIdSSLIOHandlerSocketOpenSSL;
-  memoryStream: TMemoryStream;
-begin
-  with info do
-  begin
-    if forceOverwrite then
-    begin
-      deleteFileIfExists(fileName);
-    end;
-
-    indyHTTP := TIdHTTP.Create(nil);
-    ioHandler := TIdSSLIOHandlerSocketOpenSSL.Create(indyHTTP);
-    ioHandler.SSLOptions.SSLVersions := [
-      TIdSSLVersion.sslvTLSv1, TIdSSLVersion.sslvTLSv1_1, TIdSSLVersion.sslvTLSv1_2,
-      TIdSSLVersion.sslvSSLv2, TIdSSLVersion.sslvSSLv23,
-      TIdSSLVersion.sslvSSLv3];
-    indyHTTP.IOHandler := ioHandler;
-    indyHTTP.HandleRedirects := true;
-
-    memoryStream := TMemoryStream.Create;
-    indyHTTP.Get(link, memoryStream);
-    memoryStream.SaveToFile(fileName);
-
-    FreeAndNil(memoryStream);
-    ioHandler.Close;
-    FreeAndNil(ioHandler);
-    FreeAndNil(indyHTTP);
-
-    if md5 <> '' then
-    begin
-      if not checkMD5File(fileName, md5) then
-      begin
-        raise Exception.Create(ERR_MSG);
-      end;
-    end;
-  end;
-end;
-
-const
-  RESOURCE_LIBEAY32: TResource = (name: 'LIBEAY32'; _type: DLL_TYPE);
-  RESOURCE_LIBSSL32: TResource = (name: 'LIBSSL32'; _type: DLL_TYPE);
-  FILENAME_LIBSSL32 = 'libssl32.dll';
-  FILENAME_LIBEAY32 = 'libeay32.dll';
-
-procedure getOpenSSLDLLsFromResource;
-var
-  _path_libeay32: string;
-  _path_libssl32: string;
-begin
-  _path_libeay32 := getCombinedPathWithCurrentDir(FILENAME_LIBEAY32);
-  if not FileExists(_path_libeay32) then
-  begin
-    getResourceAsFile(RESOURCE_LIBEAY32, _path_libeay32);
-  end;
-  _path_libssl32 := getCombinedPathWithCurrentDir(FILENAME_LIBSSL32);
-  if not FileExists(_path_libssl32) then
-  begin
-    getResourceAsFile(RESOURCE_LIBSSL32, _path_libssl32);
-  end;
-end;
-
-procedure deleteOpenSSLDLLsIfExists;
-var
-  _path_libeay32: string;
-  _path_libssl32: string;
-begin
-  UnLoadOpenSSLLibrary;
-  _path_libeay32 := getCombinedPathWithCurrentDir(FILENAME_LIBEAY32);
-  deleteFileIfExists(_path_libeay32);
-  _path_libssl32 := getCombinedPathWithCurrentDir(FILENAME_LIBSSL32);
-  deleteFileIfExists(_path_libssl32);
-end;
-
 procedure unzip(zipFileName: string; destinationDir: string; deleteZipAfterUnzip: boolean = false);
 const
   ERR_MSG = 'Invalid zip file.';
@@ -625,81 +490,16 @@ begin
   end;
 end;
 
-function getValidFTPConnection(FTPCredentials: TFTPCredentials): TIdFTP;
-var
-  connection: TIdFTP;
-begin
-  validateFTPCredentials(FTPCredentials);
-  connection := getFTPConnection(FTPCredentials);
-  Result := connection;
-end;
-
-function checkFTPCredentials(FTPCredentials: TFTPCredentials): boolean;
-var
-  _connection: TIdFTP;
-  _result: boolean;
-begin
-  _result := true;
-  _connection := getFTPConnection(FTPCredentials);
-  try
-    _connection.Connect;
-    if FTPCredentials.pathFTPDir <> '' then
-    begin
-      _connection.ChangeDir(FTPCredentials.pathFTPDir);
-    end;
-  except
-    on E: Exception do
-    begin
-      _result := false;
-    end;
-  end;
-  _connection.Disconnect;
-  _connection.Free;
-
-  Result := _result;
-end;
-
 function checkRequiredFTPProperties(FTPCredentials: TFTPCredentials): boolean;
 var
   _result: boolean;
 begin
   with FTPCredentials do
   begin
-    _result := (server <> '') and (credentials.username <> '') and (credentials.password <> '');
+    _result := (server <> EMPTY_STRING) and (credentials.username <> EMPTY_STRING) and (credentials.password <> EMPTY_STRING);
   end;
 
   Result := _result;
-end;
-
-function getFTPConnection(FTPCredentials: TFTPCredentials): TIdFTP;
-var
-  connection: TIdFTP;
-begin
-  validateRequiredFTPProperties(FTPCredentials);
-  connection := TIdFTP.Create(nil);
-  with FTPCredentials do
-  begin
-    connection.host := server;
-    with credentials do
-    begin
-      connection.username := username;
-      connection.password := password;
-    end;
-    connection.TransferType := transferType;
-    connection.Passive := true;
-  end;
-
-  Result := connection;
-end;
-
-procedure executeProcedure(myProcedure: TAnonymousMethod);
-begin
-  myProcedure;
-end;
-
-procedure executeProcedure(myProcedure: TCallBack);
-begin
-  myProcedure('');
 end;
 
 function getValidTelephoneNumber(number: string): string;
@@ -730,65 +530,6 @@ begin
   Result := telephoneNumber;
 end;
 
-function getCurrentDayOfWeekAsString: string;
-var
-  _nameDay: string;
-begin
-  _nameDay := getDayOfWeekAsString(Now);
-  result := _nameDay;
-end;
-
-function getDayOfWeekAsString(date: TDateTime): string;
-const
-  DAYS_OF_WEEK: TArray<String> = [
-    'Sunday',
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday'];
-var
-  _indexDayOfWeek: integer;
-  _nameDay: string;
-begin
-  _indexDayOfWeek := DayOfWeek(date) - 1;
-  _nameDay := DAYS_OF_WEEK[_indexDayOfWeek];
-  result := _nameDay;
-end;
-
-function getCurrentDateTimeAsString: string;
-begin
-  result := getDateTimeAsString(Now);
-end;
-
-function getDateTimeAsString(date: TDateTime): string;
-var
-  _date: string;
-  _time: string;
-  _dateTime: string;
-begin
-  _date := getDateAsString(date);
-  _time := TimeToStr(date);
-  _time := StringReplace(_time, ':', '', [rfReplaceAll, rfIgnoreCase]);
-  _dateTime := _date + '_' + _time;
-  result := _dateTime;
-end;
-
-function getCurrentDateAsString: string;
-begin
-  result := getDateAsString(Now);
-end;
-
-function getDateAsString(date: TDateTime): string;
-var
-  _date: string;
-begin
-  _date := DateToStr(date);
-  _date := StringReplace(_date, '/', '_', [rfReplaceAll, rfIgnoreCase]);
-  result := _date;
-end;
-
 function getRandString(size: integer = 5): string;
 const
   ALPHABET: array [1 .. 62] of char = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -810,76 +551,342 @@ begin
   Result := _randString;
 end;
 
-function getDoubleQuotedString(value: string): string;
+function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): string;
+const
+  ERR_MSG = 'No files found.';
+var
+  fileName: string;
+  _fileNamesList: TstringList;
 begin
-  Result := AnsiQuotedStr(value, '"');
+  _fileNamesList := getFileNamesListInDir(dirName, fileType, fullPath);
+  if _fileNamesList.Count > 0 then
+  begin
+    fileName := _fileNamesList[0];
+  end
+  else
+  begin
+    fileName := EMPTY_STRING;
+  end;
+  FreeAndNil(_fileNamesList);
+  if fileName = EMPTY_STRING then
+  begin
+    raise Exception.Create(ERR_MSG);
+  end;
+  Result := fileName;
 end;
 
-function getSingleQuotedString(value: string): string;
+function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TstringList;
+var
+  fileNamesList: TstringList;
+  _searchRec: TSearchRec;
+  _mask: string;
+  _fileExists: boolean;
+  _fileName: string;
 begin
-  Result := AnsiQuotedStr(value, '"');
+  fileNamesList := TstringList.Create;
+  _mask := getCombinedPath(dirName, '*');
+  if fileType <> EMPTY_STRING then
+  begin
+    _mask := _mask + '.' + fileType;
+  end;
+  _fileExists := FindFirst(_mask, faAnyFile - faDirectory, _searchRec) = 0;
+  while _fileExists do
+  begin
+    _fileName := _searchRec.Name;
+    if fullPath then
+    begin
+      _fileName := getCombinedPath(dirName, _fileName);
+    end;
+    fileNamesList.Add(_fileName);
+    _fileExists := FindNext(_searchRec) = 0;
+  end;
+
+  Result := fileNamesList;
 end;
 
-function getSubStringInsertedIntoString(mainString: string; insertedString: string; index: integer): string;
+function getCombinedPath(path1: string; path2: string): string;
+begin
+  Result := TPath.Combine(path1, path2);
+end;
+
+function getCurrentDayOfWeekAsString: string;
+var
+  _nameDay: string;
+begin
+  _nameDay := getDayOfWeekAsString(Now);
+  result := _nameDay;
+end;
+
+function getDayOfWeekAsString(date: TDateTime): string;
+const
+  DAYS_OF_WEEK: TArray<string> = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday'
+    ];
+var
+  _indexDayOfWeek: integer;
+  _nameDay: string;
+begin
+  _indexDayOfWeek := DayOfWeek(date) - 1;
+  _nameDay := DAYS_OF_WEEK[_indexDayOfWeek];
+  Result := _nameDay;
+end;
+
+function getCurrentDateTimeAsString: string;
+begin
+  Result := getDateTimeAsString(Now);
+end;
+
+function getDateTimeAsString(date: TDateTime): string;
+var
+  _date: string;
+  _time: string;
+  _dateTime: string;
+begin
+  _date := getDateAsString(date);
+  _time := TimeToStr(date);
+  _time := stringReplace(_time, ':', EMPTY_STRING, [rfReplaceAll, rfIgnoreCase]);
+  _dateTime := _date + '_' + _time;
+  Result := _dateTime;
+end;
+
+function getCurrentDateAsString: string;
+begin
+  Result := getDateAsString(Now);
+end;
+
+function getDateAsString(date: TDateTime): string;
+var
+  _date: string;
+begin
+  _date := DateToStr(date);
+  _date := stringReplace(_date, '/', '_', [rfReplaceAll, rfIgnoreCase]);
+  Result := _date;
+end;
+
+function getCurrentTimeStamp: string;
+begin
+  Result := getCurrentDateTimeAsStringWithFormatting(TIMESTAMP_FORMAT);
+end;
+
+function getCurrentDateTimeAsStringWithFormatting(formatting: string = DATE_FORMAT): string;
+begin
+  Result := getDateTimeAsStringWithFormatting(Now, formatting);
+end;
+
+function getDateTimeAsStringWithFormatting(value: TDateTime; formatting: string = DATE_FORMAT): string;
+var
+  _dateTimeAsStringWithFormatting: string;
+begin
+  _dateTimeAsStringWithFormatting := FormatDateTime(formatting, value);
+  Result := _dateTimeAsStringWithFormatting;
+end;
+
+function getCurrentDateTime: TDateTime;
+begin
+  Result := Now;
+end;
+
+function getParsedXMLstring(mainString: string): string; //todo add to myString
+var
+  parsedXMLstring: string;
+begin
+  parsedXMLstring := mainString;
+  parsedXMLstring := stringreplace(parsedXMLstring, '&', '&amp;', [rfreplaceall]);
+  parsedXMLstring := stringreplace(parsedXMLstring, '"', '&quot;', [rfreplaceall]);
+  parsedXMLstring := stringreplace(parsedXMLstring, '''', '&#39;', [rfreplaceall]);
+  parsedXMLstring := stringreplace(parsedXMLstring, '<', '&lt;', [rfreplaceall]);
+  parsedXMLstring := stringreplace(parsedXMLstring, '>', '&gt;', [rfreplaceall]);
+
+  Result := parsedXMLstring;
+end;
+
+function getDoubleQuotedString(mainString: string): string;
+begin
+  Result := AnsiQuotedStr(mainString, '"');
+end;
+
+function getSingleQuotedString(mainString: string): string;
+begin
+  Result := AnsiQuotedStr(mainString, '''');
+end;
+
+function getMainStringWithSubStringInserted(mainString: string; insertedString: string; index: integer): string;
 const
   ERR_MSG = 'Index out of range.';
 var
+  _result: string;
   _lenght: integer;
+  _firstStringPart: string;
+  _lastStringPart: string;
 begin
   _lenght := Length(mainString);
   if (index > _lenght) or (index < 0) then
   begin
     raise Exception.Create(ERR_MSG);
   end;
-  Result := Copy(mainString, 0, index) + insertedString + Copy(mainString, index + 1, _lenght);
+  _firstStringPart := Copy(mainString, 0, index);
+  _lastStringPart := Copy(mainString, index + 1, MaxInt);
+  _result := _firstStringPart + insertedString + _lastStringPart;
+
+  Result := _result;
 end;
 
-function getNumberOfLinesInStrFixedWordWrap(source: String): integer;
+function getStringWithoutLineBreaks(mainString: string; substituteString: string = SPACE_string): string;
 var
-  _stringList: TStringList;
+  stringWithoutLineBreaks: string;
 begin
-  _stringList := TStringList.Create;
-  _stringList.Text := source;
-  result := _stringList.Count;
-  FreeAndNil(_stringList);
+  stringWithoutLineBreaks := stringReplace(mainString, #13#10, substituteString, [rfReplaceAll]);
+  stringWithoutLineBreaks := stringReplace(stringWithoutLineBreaks, #10, substituteString, [rfReplaceAll]);
+  Result := stringWithoutLineBreaks;
 end;
 
-function strToStrFixedWordWrap(source: String; fixedLen: Integer): String;
+function getCSVFieldFromStringAsDate(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): TDate;
 var
-  _stringList: TStringList;
+  _result: TDate;
+begin
+  _result := getCSVFieldFromStringAsDate(mainString, index, FormatSettings, delimiter);
+  Result := _result;
+end;
+
+function getCSVFieldFromStringAsDate(mainString: string; index: integer; formatSettings: TFormatSettings;
+  delimiter: Char = SEMICOLON_DELIMITER): TDate;
+var
+  _fieldAsString: string;
+  _result: TDate;
+begin
+  _fieldAsString := getCSVFieldFromString(mainString, index, delimiter);
+  _result := StrToDate(_fieldAsString, formatSettings);
+
+  Result := _result;
+end;
+
+function getCSVFieldFromStringAsDouble(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): Double;
+var
+  _result: Double;
+begin
+  _result := getCSVFieldFromStringAsDouble(mainString, index, FormatSettings, delimiter);
+
+  Result := _result;
+end;
+
+function getCSVFieldFromStringAsDouble(mainString: string; index: integer; formatSettings: TFormatSettings;
+  delimiter: Char = SEMICOLON_DELIMITER): Double;
+var
+  _fieldAsString: string;
+  _result: Double;
+begin
+  _fieldAsString := getCSVFieldFromString(mainString, index, delimiter);
+  _result := StrToFloat(_fieldAsString, formatSettings);
+
+  Result := _result;
+end;
+
+function getCSVFieldFromStringAsInteger(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): integer;
+var
+  _fieldAsString: string;
+  _result: integer;
+begin
+  _fieldAsString := getCSVFieldFromString(mainString, index, delimiter);
+  _result := StrToInt(_fieldAsString);
+
+  Result := _result;
+end;
+
+function getCSVFieldFromString(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): string;
+const
+  ERR_MSG = 'Field index out of range.';
+var
+  _stringList: TstringList;
+  _result: string;
+begin
+  _stringList := stringToStringListWithDelimiter(mainString, delimiter);
+  try
+    try
+      _result := _stringList[index];
+    except
+      on E: Exception do
+      begin
+        raise Exception.Create(ERR_MSG);
+      end;
+    end;
+  finally
+    FreeAndNil(_stringList);
+  end;
+
+  Result := _result;
+end;
+
+function getNumberOfLinesInStrFixedWordWrap(source: string): integer;
+var
+  _stringList: TstringList;
+  _result: integer;
+begin
+  _stringList := TstringList.Create;
+  _stringList.Text := source;
+  _result := _stringList.Count;
+  FreeAndNil(_stringList);
+
+  Result := _result;
+end;
+
+function strToStrFixedWordWrap(source: string; fixedLen: Integer): string;
+var
+  _stringList: TstringList;
+  _text: string;
   _result: string;
 begin
   _stringList := strToStringList(source, fixedLen);
-  _result := _stringList.Text;
-  Delete(_result, length(_result), 1);
-  result := _result;
+  _text := _stringList.Text;
   FreeAndNil(_stringList);
+  Delete(_text, length(_text), 1);
+  _result := _text;
+
+  Result := _result;
 end;
 
-function strToStringList(source: String; fixedLen: integer): TStringList;
+function strToStringList(source: string; fixedLen: integer): TstringList;
 var
-  idx: Integer;
-  srcLen: Integer;
-  alist: TStringList;
+  stringList: TstringList;
+  i: Integer;
+  _sourceLen: Integer;
 begin
-  alist := TStringList.Create;
-  alist.LineBreak := #13;
+  stringList := TstringList.Create;
+  stringList.LineBreak := #13;
   if fixedLen = 0 then
   begin
     fixedLen := Length(source) - 1;
   end;
-  aList.Capacity := (Length(source) div fixedLen) + 1;
+  stringList.Capacity := (Length(source) div fixedLen) + 1;
 
-  idx := 1;
-  srcLen := Length(source);
+  i := 1;
+  _sourceLen := Length(source);
 
-  while idx <= srcLen do
+  while i <= _sourceLen do
   begin
-    aList.Add(Copy(source, idx, fixedLen));
-    Inc(idx, fixedLen);
+    stringList.Add(Copy(source, i, fixedLen));
+    Inc(i, fixedLen);
   end;
 
-  result := alist;
+  result := stringList;
+end;
+
+function stringToStringListWithDelimiter(value: string; delimiter: Char): TstringList;
+var
+  _stringList: TstringList;
+begin
+  _stringList := TstringList.Create;
+  _stringList.Clear;
+  _stringList.Delimiter := delimiter;
+  _stringList.StrictDelimiter := True;
+  _stringList.DelimitedText := value;
+
+  Result := _stringList;
 end;
 
 procedure splitStrings(source: string; delimiter: string; var destFirstString: string; var destSecondString: string);
@@ -890,16 +897,110 @@ var
   _lengthDestSecondString: integer;
 begin
   _startIndexDelimiter := AnsiPos(delimiter, source);
-  _endIndexDelimiter := _startIndexDelimiter + Length(delimiter);
-  _lengthDestFirstString := _startIndexDelimiter - 1;
-  _lengthDestSecondString := Length(source) - _endIndexDelimiter + 1;
-  destFirstString := Copy(source, 0, _lengthDestFirstString);
-  destSecondString := Copy(source, _endIndexDelimiter, _lengthDestSecondString);
+  if _startIndexDelimiter > 0 then
+  begin
+    _endIndexDelimiter := _startIndexDelimiter + Length(delimiter);
+    _lengthDestFirstString := _startIndexDelimiter - 1;
+    _lengthDestSecondString := Length(source) - _endIndexDelimiter + 1;
+    destFirstString := Copy(source, 0, _lengthDestFirstString);
+    destSecondString := Copy(source, _endIndexDelimiter, _lengthDestSecondString);
+  end
+  else
+  begin
+    destFirstString := source;
+    destSecondString := '';
+  end;
 end;
 
-function getMergedStrings(firstString: string; secondString: string; delimiter: string = ''): string;
+function getMergedStrings(firstString: string; secondString: string; delimiter: string = EMPTY_STRING): string;
 begin
   Result := firstString + delimiter + secondString;
+end;
+
+function checkIfEmailIsValid(email: string): boolean;
+var
+  _result: boolean;
+begin
+  _result := TRegEx.IsMatch(email, REGEX_VALID_EMAIL);
+  Result := _result;
+end;
+
+function checkIfMainStringContainsSubStringNoCaseSensitive(mainString: string; subString: string): boolean;
+const
+  NO_CASE_SENSITIVE = false;
+begin
+  Result := checkIfMainStringContainsSubString(mainString, subString, NO_CASE_SENSITIVE);
+end;
+
+function checkIfMainStringContainsSubString(mainString: string; subString: string; caseSensitiveSearch: boolean = true): boolean;
+var
+  _result: boolean;
+begin
+  if caseSensitiveSearch then
+  begin
+    _result := ContainsStr(mainString, subString);
+  end
+  else
+  begin
+    _result := ContainsText(mainString, subString);
+  end;
+
+  Result := _result;
+end;
+
+procedure tryToExecuteProcedure(myProcedure: TProcedure; raiseExceptionEnabled: boolean = false);
+begin
+  try
+    executeProcedure(myProcedure);
+  except
+    on E: Exception do
+    begin
+      if raiseExceptionEnabled then
+      begin
+        raise Exception.Create(E.Message);
+      end;
+    end;
+  end;
+end;
+
+procedure tryToExecuteProcedure(myProcedure: TAnonymousMethod; raiseExceptionEnabled: boolean = false);
+begin
+  try
+    executeProcedure(myProcedure);
+  except
+    on E: Exception do
+    begin
+      if raiseExceptionEnabled then
+      begin
+        raise Exception.Create(E.Message);
+      end;
+    end;
+  end;
+end;
+
+procedure tryToExecuteProcedure(myProcedure: TCallBack; raiseExceptionEnabled: boolean = false);
+begin
+  try
+    executeProcedure(myProcedure);
+  except
+    on E: Exception do
+    begin
+      if raiseExceptionEnabled then
+      begin
+        raise Exception.Create(E.Message);
+      end;
+    end;
+  end;
+end;
+
+procedure executeProcedure(myProcedure: TAnonymousMethod);
+begin
+  myProcedure;
+end;
+
+procedure executeProcedure(myProcedure: TCallBack);
+begin
+  myProcedure('');
 end;
 
 end.

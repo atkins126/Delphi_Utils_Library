@@ -39,54 +39,13 @@ unit KLib.Windows;
 interface
 
 uses
-  KLib.Types,
-  Winapi.Windows, Winapi.Messages, Winapi.ShellApi, Winapi.AccCtrl,
+  KLib.Types, Klib.Constants,
+  Winapi.Windows, Winapi.ShellApi, Winapi.AccCtrl,
   System.Classes;
 
-const
-  WM_SERVICE_START = WM_USER + 0;
-  WM_SERVICE_ERROR = WM_USER + 2;
-
-  RUN_AS_ADMIN = true;
-
-type
-  TMemoryRam = class
-  private
-    class var RamStats: TMemoryStatusEx;
-  public
-    class procedure initialize;
-    class function getTotalMemoryAsString: string;
-    class function getTotalMemoryAsDouble: double;
-    class function getTotalFreeMemoryAsString: string;
-    class function getTotalFreeMemoryAsInteger: integer;
-    class function getTotalFreeMemoryAsDouble: double;
-    class function getPercentageFreeMemoryAsString: string;
-  end;
-
-  TWindowsService = class //nameService is not case-sensitive
-  private
-    constructor create; virtual; abstract; //TODO CHECK IF IS REQUIRED BY KLIB.MYSQL.SERVICE
-  protected
-    function createService: boolean; virtual; abstract; //TODO IMPLEMENTE CODE
-  public
-    class procedure aStart(handleSender: THandle; nameService: string; nameMachine: string = '');
-    class procedure startIfExists(nameService: string; nameMachine: string = '');
-    class procedure start(nameService: string; nameMachine: string = '');
-    class procedure stopIfExists(nameService: string; nameMachine: string = '';
-      force: boolean = false);
-    class procedure stop(nameService: string; nameMachine: string = '';
-      force: boolean = false);
-    class function isRunning(nameService: string; nameMachine: string = ''): boolean;
-    class function existsService(nameService: string; nameMachine: string = ''): boolean;
-    class procedure deleteService(nameService: string);
-
-    class function isPortAvaliable(host: string; port: Word): boolean; //todo move?
-  end;
-
-  //----------------------------------
-
 procedure downloadFile(info: TDownloadInfo; forceOverwrite: boolean);
-function getFirstPortAvaliable(defaultPort: integer): integer;
+function getFirstPortAvaliable(defaultPort: integer; host: string = LOCALHOST_IP_ADDRESS): integer;
+function checkIfPortIsAvaliable(host: string; port: Word): boolean;
 function checkIfAddressIsLocalhost(address: string): boolean;
 function getIPFromHostName(hostName: string): string; //if hostname is alredy an ip address, returns hostname
 function getIP: string;
@@ -100,44 +59,36 @@ function getWindowsArchitecture: TWindowsArchitecture;
 function checkIfUserIsAdmin: boolean;
 function IsUserAnAdmin: boolean; external shell32; //KEPT THE SIGNATURE, NOT RENAME!!!
 
-const
-{$externalsym SW_HIDE}
-  SW_HIDE = 0;
-{$externalsym SW_SHOWNORMAL}
-  SW_SHOWNORMAL = 1;
-{$externalsym SW_NORMAL}
-  SW_NORMAL = 1;
-{$externalsym SW_SHOWMINIMIZED}
-  SW_SHOWMINIMIZED = 2;
-{$externalsym SW_SHOWMAXIMIZED}
-  SW_SHOWMAXIMIZED = 3;
-{$externalsym SW_MAXIMIZE}
-  SW_MAXIMIZE = 3;
-{$externalsym SW_SHOWNOACTIVATE}
-  SW_SHOWNOACTIVATE = 4;
-{$externalsym SW_SHOW}
-  SW_SHOW = 5;
-{$externalsym SW_MINIMIZE}
-  SW_MINIMIZE = 6;
-{$externalsym SW_SHOWMINNOACTIVE}
-  SW_SHOWMINNOACTIVE = 7;
-{$externalsym SW_SHOWNA}
-  SW_SHOWNA = 8;
-{$externalsym SW_RESTORE}
-  SW_RESTORE = 9;
-{$externalsym SW_SHOWDEFAULT}
-  SW_SHOWDEFAULT = 10;
-{$externalsym SW_FORCEMINIMIZE}
-  SW_FORCEMINIMIZE = 11;
-{$externalsym SW_MAX}
-  SW_MAX = 11;
-function shellExecuteExe(fileName: string; params: string = ''; showWindow: integer = SW_HIDE;
+type
+  TShowWindowType = (
+    SW_HIDE = Winapi.Windows.SW_HIDE,
+    SW_SHOWNORMAL = Winapi.Windows.SW_SHOWNORMAL,
+    SW_NORMAL = Winapi.Windows.SW_NORMAL,
+    SW_SHOWMINIMIZED = Winapi.Windows.SW_SHOWMINIMIZED,
+    SW_SHOWMAXIMIZED = Winapi.Windows.SW_SHOWMAXIMIZED,
+    SW_MAXIMIZE = Winapi.Windows.SW_MAXIMIZE,
+    SW_SHOWNOACTIVATE = Winapi.Windows.SW_SHOWNOACTIVATE,
+    SW_SHOW = Winapi.Windows.SW_SHOW,
+    SW_MINIMIZE = Winapi.Windows.SW_MINIMIZE,
+    SW_SHOWMINNOACTIVE = Winapi.Windows.SW_SHOWMINNOACTIVE,
+    SW_SHOWNA = Winapi.Windows.SW_SHOWNA,
+    SW_RESTORE = Winapi.Windows.SW_RESTORE,
+    SW_SHOWDEFAULT = Winapi.Windows.SW_SHOWDEFAULT,
+    SW_FORCEMINIMIZE = Winapi.Windows.SW_FORCEMINIMIZE,
+    SW_MAX = Winapi.Windows.SW_MAX
+    );
+
+procedure openWebPageWithDefaultBrowser(url: string);
+
+function shellExecuteExeAsAdmin(fileName: string; params: string = ''; showWindowType: TShowWindowType = TShowWindowType.SW_HIDE;
   exceptionIfFunctionFails: boolean = false): integer;
+function shellExecuteExe(fileName: string; params: string = ''; showWindowType: TShowWindowType = TShowWindowType.SW_HIDE;
+  exceptionIfFunctionFails: boolean = false; operation: string = 'open'): integer;
 
 function shellExecuteExCMDAndWait(params: string; runAsAdmin: boolean = false;
-  showWindow: cardinal = SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
+  showWindowType: TShowWindowType = TShowWindowType.SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
 function shellExecuteExAndWait(fileName: string; params: string = ''; runAsAdmin: boolean = false;
-  showWindow: cardinal = SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
+  showWindowType: TShowWindowType = TShowWindowType.SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
 function executeAndWaitExe(fileName: string; params: string = ''; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
 
 function netShare(targetDir: string; netName: string = ''; netPassw: string = '';
@@ -164,11 +115,13 @@ procedure copyDir(sourceDir: string; destinationDir: string; silent: boolean = t
 procedure createHideDir(dirName: string; forceDelete: boolean = false);
 procedure deleteDirectoryIfExists(dirName: string; silent: boolean = true);
 
+procedure myMoveFile(sourceFileName: string; targetFileName: string);
+
 procedure createEmptyFileIfNotExists(filename: string);
 procedure createEmptyFile(filename: string);
 
 function checkIfIsWindowsSubDir(subDir: string; mainDir: string): boolean;
-function getParentDirFromDir(sourceDir: string): string;
+function getParentDir(source: string): string;
 function getValidFullPathInWindowsStyle(path: string): string;
 function getPathInWindowsStyle(path: string): string;
 
@@ -199,303 +152,18 @@ procedure waitFor(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: 
 procedure raiseLastSysErrorMessage;
 function getLastSysErrorMessage: string;
 
+function getDoubleAsString(value: Double; decimalSeparator: char = DECIMAL_SEPARATOR_IT): string;
+function getFloatToStrDecimalSeparator: char;
+function getLocaleDecimalSeparator: char;
+
 implementation
 
 uses
-  KLib.Utils, Klib.Constants, KLib.Validate,
+  KLib.Utils, KLib.Validate,
   Vcl.Forms,
-  Winapi.ACLAPI, Winapi.TLHelp32, Winapi.ActiveX, Winapi.Winsvc, Winapi.Shlobj, Winapi.Winsock, Winapi.UrlMon,
-  System.IOUtils, System.SysUtils, System.Win.ComObj, System.Win.Registry,
+  Winapi.ACLAPI, Winapi.TLHelp32, Winapi.ActiveX, Winapi.Shlobj, Winapi.Winsock, Winapi.UrlMon, Winapi.Messages,
+  System.SysUtils, System.Win.ComObj, System.Win.Registry,
   IdTCPClient;
-
-class procedure TMemoryRam.initialize;
-begin
-  FillChar(RamStats, SizeOf(MemoryStatusEx), #0);
-  RamStats.dwLength := SizeOf(MemoryStatusEx);
-  GlobalMemoryStatusEx(RamStats);
-end;
-
-class function TMemoryRam.getTotalMemoryAsString: string;
-begin
-  result := floattostr(RamStats.ullTotalPhys / _1_MB_IN_BYTES) + ' MB';
-end;
-
-class function TMemoryRam.getTotalMemoryAsDouble: Double;
-begin
-  result := RamStats.ullTotalPhys / _1_MB_IN_BYTES;
-end;
-
-class function TMemoryRam.getTotalFreeMemoryAsString: string;
-begin
-  result := floattostr(RamStats.ullAvailPhys / _1_MB_IN_BYTES) + ' MB';
-end;
-
-class function TMemoryRam.getTotalFreeMemoryAsInteger: integer;
-var
-  _totalFreeMemoryDouble: double;
-  _totalFreeMemoryInteger: integer;
-begin
-  _totalFreeMemoryDouble := getTotalMemoryAsDouble;
-  _totalFreeMemoryInteger := trunc(_totalFreeMemoryDouble);
-  Result := _totalFreeMemoryInteger;
-end;
-
-class function TMemoryRam.getTotalFreeMemoryAsDouble: Double;
-begin
-  result := RamStats.ullAvailPhys / _1_MB_IN_BYTES;
-end;
-
-class function TMemoryRam.getPercentageFreeMemoryAsString: string;
-begin
-  result := inttostr(RamStats.dwMemoryLoad) + '%';
-end;
-
-//----------------------------------------------------------------------------------------
-
-class procedure TWindowsService.aStart(handleSender: THandle; nameService: string;
-  nameMachine: string = '');
-begin
-  TThread.CreateAnonymousThread(
-    procedure
-    begin
-      try
-        TWindowsService.start(nameService, nameMachine);
-        PostMessage(handleSender, WM_SERVICE_START, 0, 0);
-      except
-        on E: Exception do
-        begin
-          PostMessage(handleSender, WM_SERVICE_ERROR, 0, 0);
-        end;
-      end;
-    end).Start;
-end;
-
-class procedure TWindowsService.startIfExists(nameService: string; nameMachine: string = '');
-begin
-  if existsService(nameService) then
-  begin
-    start(nameService, nameMachine);
-  end;
-end;
-
-class procedure TWindowsService.start(nameService: string; nameMachine: string = '');
-const
-  ERR_MSG = 'Service not started.';
-var
-  cont: integer;
-  handleServiceControlManager: SC_HANDLE;
-  handleService: SC_HANDLE;
-  serviceStatus: TServiceStatus;
-
-  _exit: boolean;
-begin
-  handleServiceControlManager := OpenSCManager(PChar(nameMachine), nil, SC_MANAGER_CONNECT);
-  if (handleServiceControlManager > 0) then
-  begin
-    handleService := OpenService(handleServiceControlManager, PChar(nameService), SERVICE_START or SERVICE_QUERY_STATUS);
-    if (handleService > 0) then
-    begin
-      if (QueryServiceStatus(handleService, serviceStatus)) then
-      begin
-        if (serviceStatus.dwCurrentState = SERVICE_RUNNING) then
-        begin
-          CloseServiceHandle(handleService);
-          CloseServiceHandle(handleServiceControlManager);
-          Exit;
-        end;
-
-        if not startService(handleService, 0, PPChar(nil)^) then
-        begin
-          raise Exception.Create(ERR_MSG);
-          CloseServiceHandle(handleService);
-          CloseServiceHandle(handleServiceControlManager);
-          Exit;
-        end;
-        QueryServiceStatus(handleService, serviceStatus);
-
-        //SERVICE_START_PENDING...
-        _exit := false;
-        cont := 0;
-        while not(_exit) do
-        begin
-          case serviceStatus.dwCurrentState of
-            SERVICE_RUNNING:
-              _exit := true;
-            SERVICE_START_PENDING:
-              if (cont >= 60) then
-              begin
-                _exit := true;
-              end;
-          else
-            _exit := true;
-          end;
-
-          if not _exit then
-          begin
-            Sleep(3000);
-            cont := cont + 1;
-            QueryServiceStatus(handleService, serviceStatus);
-          end;
-        end;
-      end;
-    end;
-    QueryServiceStatus(handleService, serviceStatus);
-    if not(serviceStatus.dwCurrentState = SERVICE_RUNNING) then
-    begin
-      raise Exception.Create(ERR_MSG);
-    end;
-    CloseServiceHandle(handleService);
-  end;
-  CloseServiceHandle(handleServiceControlManager);
-end;
-
-class procedure TWindowsService.stopIfExists(nameService: string; nameMachine: string = '';
-force: boolean = false);
-begin
-  if existsService(nameService) then
-  begin
-    stop(nameService, nameMachine, force);
-  end;
-end;
-
-class procedure TWindowsService.Stop(nameService: string; nameMachine: string = '';
-force: boolean = false);
-const
-  ERR_MSG = 'Service not stopped.';
-var
-  handleServiceControlManager: SC_HANDLE;
-  handleService: SC_HANDLE;
-  serviceStatus: TServiceStatus;
-  dwCheckpoint: DWord;
-  _cmdParams: string;
-begin
-  handleServiceControlManager := OpenSCManager(PChar(nameMachine), nil, SC_MANAGER_CONNECT);
-  if (handleServiceControlManager > 0) then
-  begin
-    handleService := OpenService(handleServiceControlManager, PChar(nameService), SERVICE_STOP or SERVICE_QUERY_STATUS);
-    if (handleService > 0) then
-    begin
-      if (ControlService(handleService, SERVICE_CONTROL_STOP, serviceStatus)) then
-      begin
-        if (QueryServiceStatus(handleService, serviceStatus)) then
-        begin
-          while (SERVICE_STOPPED <> serviceStatus.dwCurrentState) do
-          begin
-            dwCheckpoint := serviceStatus.dwCheckPoint;
-            Sleep(250);
-            if (not QueryServiceStatus(handleService, serviceStatus)) then
-              break;
-            if (serviceStatus.dwCheckPoint > dwCheckpoint) then
-              break;
-          end;
-        end;
-      end
-      else
-      begin
-        if (force) then
-        begin
-          _cmdParams := '/K taskkill /f /fi "SERVICES eq ' + nameService + '" & EXIT';
-          shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN);
-        end;
-      end;
-      QueryServiceStatus(handleService, serviceStatus);
-      CloseServiceHandle(handleService);
-    end;
-    CloseServiceHandle(handleService);
-  end;
-  if not(serviceStatus.dwCurrentState = SERVICE_STOPPED) then
-  begin
-    raise Exception.Create(ERR_MSG);
-  end;
-end;
-
-class function TWindowsService.isRunning(nameService: string; nameMachine: string = ''): boolean;
-var
-  handleServiceControlManager: SC_HANDLE;
-  handleService: SC_HANDLE;
-  serviceStatus: TServiceStatus;
-begin
-  result := false;
-  handleServiceControlManager := OpenSCManager(PChar(nameMachine), nil, SC_MANAGER_CONNECT);
-  if (handleServiceControlManager > 0) then
-  begin
-    handleService := OpenService(handleServiceControlManager, PChar(nameService), SERVICE_START or SERVICE_QUERY_STATUS);
-    if (handleService > 0) then
-    begin
-      if (QueryServiceStatus(handleService, serviceStatus)) then
-      begin
-        if (serviceStatus.dwCurrentState = SERVICE_RUNNING) then
-        begin
-          Result := True;
-        end;
-      end;
-    end;
-    CloseServiceHandle(handleService);
-  end;
-  CloseServiceHandle(handleServiceControlManager);
-end;
-
-class function TWindowsService.existsService(nameService: string; nameMachine: string = ''): boolean; //nameService is not case-sensitive
-var
-  _result: boolean;
-  _handleServiceControlManager: SC_HANDLE;
-  _handleService: SC_HANDLE;
-begin
-  try
-    _handleServiceControlManager := OpenSCManager(PChar(nameMachine), nil, SC_MANAGER_CONNECT);
-    _handleService := OpenService(_handleServiceControlManager, PChar(nameService),
-      SERVICE_ALL_ACCESS);
-
-    CloseServiceHandle(_handleService);
-    CloseServiceHandle(_handleServiceControlManager);
-  except
-    RaiseLastOSError;
-  end;
-  _result := GetLastError() = ERROR_SUCCESS;
-
-  Result := _result;
-end;
-
-class procedure TWindowsService.deleteService(nameService: string);
-const
-  ERR_MSG = 'Unable to delete the Windows service.';
-var
-  _cmdParams: string;
-begin
-  if (existsService(nameService)) then
-  begin
-    if isRunning(nameService) then
-    begin
-      stop(nameService, '', true);
-    end;
-    _cmdParams := '/K SC DELETE ' + nameService + ' & EXIT';
-    shellExecuteExCMDAndWait(_cmdParams, RUN_AS_ADMIN);
-    if (existsService(nameService)) then
-    begin
-      raise Exception.Create(ERR_MSG);
-    end;
-  end;
-end;
-
-class function TWindowsService.isPortAvaliable(host: string; port: Word): boolean;
-var
-  IdTCPClient: TIdTCPClient;
-begin
-  Result := True;
-  try
-    IdTCPClient := TIdTCPClient.Create(nil);
-    try
-      IdTCPClient.Host := host;
-      IdTCPClient.Port := port;
-      IdTCPClient.Connect;
-      Result := False;
-    finally
-      IdTCPClient.Free;
-    end;
-  except
-    //Ignore exceptions
-  end;
-end;
 
 procedure downloadFile(info: TDownloadInfo; forceOverwrite: boolean);
 const
@@ -521,16 +189,36 @@ begin
   end;
 end;
 
-function getFirstPortAvaliable(defaultPort: integer): integer;
+function getFirstPortAvaliable(defaultPort: integer; host: string = LOCALHOST_IP_ADDRESS): integer;
 var
   _port: integer;
 begin
   _port := defaultPort;
-  while not TWindowsService.isPortAvaliable('127.0.0.1', _port) do
+  while not checkIfPortIsAvaliable(host, _port) do
   begin
     inc(_port);
   end;
   result := _port;
+end;
+
+function checkIfPortIsAvaliable(host: string; port: Word): boolean;
+var
+  IdTCPClient: TIdTCPClient;
+begin
+  Result := True;
+  try
+    IdTCPClient := TIdTCPClient.Create(nil);
+    try
+      IdTCPClient.Host := host;
+      IdTCPClient.Port := port;
+      IdTCPClient.Connect;
+      Result := False;
+    finally
+      IdTCPClient.Free;
+    end;
+  except
+    //Ignore exceptions
+  end;
 end;
 
 function checkIfAddressIsLocalhost(address: string): boolean;
@@ -653,13 +341,28 @@ begin
   Result := IsUserAnAdmin;
 end;
 
-function shellExecuteExe(fileName: string; params: string = ''; showWindow: integer = SW_HIDE;
-exceptionIfFunctionFails: boolean = false): integer;
+procedure openWebPageWithDefaultBrowser(url: string);
+begin
+  ShellExecute(0, 'open', PChar(url), nil, nil, Winapi.Windows.SW_NORMAL);
+end;
+
+function shellExecuteExeAsAdmin(fileName: string; params: string = ''; showWindowType: TShowWindowType = TShowWindowType.SW_HIDE;
+  exceptionIfFunctionFails: boolean = false): integer;
+var
+  _result: integer;
+begin
+  _result := shellExecuteExe(fileName, params, showWindowType, exceptionIfFunctionFails, 'runas');
+  Result := _result;
+end;
+
+function shellExecuteExe(fileName: string; params: string = ''; showWindowType: TShowWindowType = TShowWindowType.SW_HIDE;
+  exceptionIfFunctionFails: boolean = false; operation: string = 'open'): integer;
 var
   _returnCode: integer;
   errMsg: string;
 begin
-  _returnCode := shellExecute(0, 'open', pchar(getDoubleQuotedString(fileName)), PCHAR(trim(params)), nil, showWindow);
+  _returnCode := shellExecute(0, pchar(operation), pchar(getDoubleQuotedString(fileName)), PCHAR(trim(params)),
+    pchar(ExtractFileDir(fileName)), integer(showWindowType));
 
   if exceptionIfFunctionFails then
   begin
@@ -718,13 +421,13 @@ begin
 end;
 
 function shellExecuteExCMDAndWait(params: string; runAsAdmin: boolean = false;
-showWindow: cardinal = SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
+  showWindowType: TShowWindowType = TShowWindowType.SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
 begin
-  result := shellExecuteExAndWait(CMD_EXE_NAME, params, runAsAdmin, showWindow, exceptionIfReturnCodeIsNot0);
+  result := shellExecuteExAndWait(CMD_EXE_NAME, params, runAsAdmin, showWindowType, exceptionIfReturnCodeIsNot0);
 end;
 
 function shellExecuteExAndWait(fileName: string; params: string = ''; runAsAdmin: boolean = false;
-showWindow: cardinal = SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
+  showWindowType: TShowWindowType = TShowWindowType.SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
 var
   _shellExecuteInfo: TShellExecuteInfo;
 
@@ -748,7 +451,7 @@ begin
     end;
     _shellExecuteInfo.lpParameters := PChar(trim(params));
     lpFile := PChar(FileName);
-    nShow := showWindow;
+    nShow := integer(showWindowType);
   end;
   if not ShellExecuteEx(@_shellExecuteInfo) then
   begin
@@ -790,14 +493,14 @@ begin
   with _startupInfo do
   begin
     cb := SizeOf(TStartupInfo);
-    wShowWindow := SW_HIDE;
+    wShowWindow := Winapi.Windows.SW_HIDE;
   end;
   if not CreateProcess(nil, pchar(_commad), nil, nil, false,
-  //   CREATE_NO_WINDOW,
-  CREATE_NEW_CONSOLE or NORMAL_PRIORITY_CLASS, //TODO check if is ok
-  nil, nil, _startupInfo, _processInfo) then
+    //   CREATE_NO_WINDOW,
+    CREATE_NEW_CONSOLE or NORMAL_PRIORITY_CLASS, //TODO check if is ok
+    nil, nil, _startupInfo, _processInfo) then
   begin
-    getLastSysErrorMessage
+    raiseLastSysErrorMessage;
   end;
 
   //TODO CHECK
@@ -839,7 +542,7 @@ function netShareAdd(servername: PWideChar; level: DWORD; buf: Pointer; parm_err
   external 'NetAPI32.dll' name 'NetShareAdd';
 
 function netShare(targetDir: string; netName: string = ''; netPassw: string = '';
-grantAllPermissionToEveryoneGroup: boolean = false): string;
+  grantAllPermissionToEveryoneGroup: boolean = false): string;
 const
   NERR_SUCCESS = 0;
   STYPE_DISKTREE = 0;
@@ -855,7 +558,7 @@ const
   ACCESS_PERM = $40;
   ACCESS_ALL = ACCESS_READ or ACCESS_WRITE or ACCESS_CREATE or ACCESS_EXEC or ACCESS_DELETE or ACCESS_ATRIB or ACCESS_PERM;
 
-  ERR_MSG = 'Unable to share folder.';
+  ERR_MSG = 'Unable to share folder :';
 var
   _targetDir: string;
   AShareInfo: PSHARE_INFO_2;
@@ -901,7 +604,7 @@ begin
     end;
     if not DirectoryExists(pathSharedDir) then
     begin
-      _errMsg := getDoubleQuotedString(_targetDir) + ' : ' + ERR_MSG;
+      _errMsg := ERR_MSG + getDoubleQuotedString(_targetDir);
       raise Exception.Create(_errMsg);
     end;
     pathSharedDir := '\\' + GetEnvironmentVariable('COMPUTERNAME') + '\' + AShareInfo.shi2_netname;
@@ -917,7 +620,7 @@ begin
 end;
 
 procedure addTCP_IN_FirewallException(ruleName: string; port: Word; description: string = ''; grouping: string = '';
-executable: String = '');
+  executable: String = '');
 const
   NET_FW_PROFILE2_DOMAIN = 1;
   NET_FW_PROFILE2_PRIVATE = 2;
@@ -1012,8 +715,6 @@ begin
 end;
 
 procedure grantAllPermissionsToTheObject(windowsGroupOrUser: string; myObject: string);
-const
-  ERR_MSG = 'Not exists in Windows Groups/Users.';
 var
   newDACL: PACl;
   oldDACL: PACl;
@@ -1117,9 +818,9 @@ begin
     validateThatDirNotExists(targetDir);
   end;
 
-  _parentDirTargetDir := getParentDirFromDir(targetDir);
+  _parentDirTargetDir := getParentDir(targetDir);
   _sourceDirName := ExtractFileName(getValidFullPathInWindowsStyle(sourceDir));
-  _tempTargetDir := TPath.Combine(_parentDirTargetDir, _sourceDirName);
+  _tempTargetDir := getCombinedPath(_parentDirTargetDir, _sourceDirName);
   copyDir(sourceDir, _parentDirTargetDir);
   if not RenameFile(_tempTargetDir, targetDir) then
   begin
@@ -1179,7 +880,7 @@ end;
 
 procedure deleteDirectoryIfExists(dirName: string; silent: boolean = true);
 const
-  ERR_MSG = 'Unable to delete.';
+  ERR_MSG = 'Unable to delete :';
 var
   sHFileOpStruct: TSHFileOpStruct;
   shFileOperationResult: integer;
@@ -1201,9 +902,20 @@ begin
     shFileOperationResult := SHFileOperation(sHFileOpStruct);
     if (shFileOperationResult <> 0) or (DirectoryExists(dirName)) then
     begin
-      errMsg := ERR_MSG + ' : ' + dirName;
+      errMsg := ERR_MSG + dirName;
       raise Exception.Create(errMsg);
     end;
+  end;
+end;
+
+procedure myMoveFile(sourceFileName: string; targetFileName: string);
+var
+  _result: boolean;
+begin
+  _result := MoveFile(pchar(sourceFileName), pchar(targetFileName));
+  if not _result then
+  begin
+    raiseLastSysErrorMessage;
   end;
 end;
 
@@ -1242,11 +954,11 @@ begin
   result := _isSubDir
 end;
 
-function getParentDirFromDir(sourceDir: string): string;
+function getParentDir(source: string): string;
 var
   parentDir: string;
 begin
-  parentDir := getValidFullPathInWindowsStyle(sourceDir);
+  parentDir := getValidFullPathInWindowsStyle(source);
   parentDir := ExtractFilePath(parentDir);
   result := parentDir;
 end;
@@ -1630,11 +1342,11 @@ begin
   while not _exit do
   begin
     _return := MsgWaitForMultipleObjects(1, { 1 handle to wait on }
-    processHandle,
+      processHandle,
       False, { wake on any event }
-    timeout,
+      timeout,
       QS_PAINT or QS_SENDMESSAGE or QS_POSTMESSAGE //todo check
-    //      QS_PAINT or QS_POSTMESSAGE or QS_SENDMESSAGE or QS_ALLPOSTMESSAGE { wake on paint messages or messages from other threads }
+      //      QS_PAINT or QS_POSTMESSAGE or QS_SENDMESSAGE or QS_ALLPOSTMESSAGE { wake on paint messages or messages from other threads }
       );
     case _return of
       WAIT_OBJECT_0:
@@ -1715,6 +1427,42 @@ begin
   _errorCode := GetLastError;
   sysErrMsg := SysErrorMessage(_errorCode);
   Result := sysErrMsg;
+end;
+
+function getDoubleAsString(value: Double; decimalSeparator: char = DECIMAL_SEPARATOR_IT): string;
+var
+  _doubleAsString: string;
+  _FloatToStrDecimalSeparator: char;
+begin
+  _doubleAsString := FloatToStr(value);
+  _FloatToStrDecimalSeparator := getFloatToStrDecimalSeparator;
+  _doubleAsString := StringReplace(_doubleAsString, _FloatToStrDecimalSeparator, decimalSeparator, [rfReplaceAll]);
+  Result := _doubleAsString;
+end;
+
+function getFloatToStrDecimalSeparator: char;
+const
+  VALUE_WITH_DECIMAL_SEPARATOR = 0.1;
+  DECIMAL_SEPARATOR_INDEX = 2;
+var
+  _doubleAsString: string;
+begin
+  _doubleAsString := FloatToStr(VALUE_WITH_DECIMAL_SEPARATOR);
+  Result := _doubleAsString[2];
+end;
+
+function getLocaleDecimalSeparator: char;
+const
+  LOCALE_NAME_SYSTEM_DEFAULT = '!x-sys-default-locale';
+var
+  _buffer: array [1 .. 10] of Char;
+  decimalSeparator: Char;
+begin
+  FillChar(_buffer, SizeOf(_buffer), 0);
+  Win32Check(GetLocaleInfoEx(LOCALE_NAME_SYSTEM_DEFAULT, LOCALE_SDECIMAL, @_buffer[1], SizeOf(_buffer)) <> 0);
+  decimalSeparator := _buffer[1];
+
+  Result := decimalSeparator;
 end;
 
 end.

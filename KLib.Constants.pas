@@ -39,6 +39,15 @@ unit KLib.Constants;
 interface
 
 const
+  DATE_FORMAT = 'yyyy-mm-dd';
+  DATETIME_FORMAT = 'yyyy-mm-dd hh:nn:ss';
+  TIMESTAMP_FORMAT = 'yyyymmddhhnnss';
+
+  SEMICOLON_DELIMITER = ';';
+
+  DECIMAL_SEPARATOR_IT = ',';
+  MYSQL_DECIMAL_SEPARATOR = '.';
+
   LOCALHOST_IP_ADDRESS = '127.0.0.1';
 
   _1_MB_IN_BYTES = 1048576;
@@ -48,6 +57,7 @@ const
   PNG_TYPE = 'PNG';
   ZIP_TYPE = 'ZIP';
   XSL_TYPE = 'XSL';
+  XML_TYPE = 'XML';
   EXE_TYPE = 'EXE';
   JSON_TYPE = 'JSON';
   RTF_TYPE = 'RTF';
@@ -59,8 +69,15 @@ const
   C_DRIVE = 'C';
 
   RANDOM_STRING = '99~@(To4h7KeFSX|{T2M';
+  SPACE_STRING = ' ';
   EMPTY_STRING = '';
-  FORCE_OVERWRITE = true;
+
+  RUN_AS_ADMIN = true;
+
+  NOT_FORCE = false;
+  NOT_FORCE_OVERWRITE = NOT_FORCE;
+  FORCE = true;
+  FORCE_OVERWRITE = FORCE;
 
   //Keystroke Message Flag
   //https://docs.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input
@@ -83,6 +100,23 @@ const
   //(nel nostro caso 0)
 
   KF_CODE_ENTER = 1835009;
+
+  REGEX_VALID_EMAIL =
+    '([!#-''*+/-9=?A-Z^-~-]+(\.[!#-''*+/-9=?A-Z^-~-]+)*|"([]!#-[^-~ \t]|(\\[\t -~]))+")@([0'
+    + '-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])?(\.[0-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])'
+    + '?)*|\[((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1'
+    + '-9]?[0-9])){3}|IPv6:((((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){6}|::((0|[1-9A-Fa-f][0-9A-Fa-'
+    + 'f]{0,3}):){5}|[0-9A-Fa-f]{0,4}::((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){4}|(((0|[1-9A-Fa-f]'
+    + '[0-9A-Fa-f]{0,3}):)?(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}'
+    + '):){3}|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){0,2}(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::((0|'
+    + '[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){2}|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){0,3}(0|[1-9A-Fa-'
+    + 'f][0-9A-Fa-f]{0,3}))?::(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,'
+    + '3}):){0,4}(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::)((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):(0|[1-9'
+    + 'A-Fa-f][0-9A-Fa-f]{0,3})|(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\.(25[0-5]|2[0-4]'
+    + '[0-9]|1[0-9]{2}|[1-9]?[0-9])){3})|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}):){0,5}(0|[1-9A-Fa-'
+    + 'f][0-9A-Fa-f]{0,3}))?::(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3})|(((0|[1-9A-Fa-f][0-9A-Fa-f]{0,3'
+    + '}):){0,6}(0|[1-9A-Fa-f][0-9A-Fa-f]{0,3}))?::)|(?!IPv6:)[0-9A-Za-z-]*[0-9A-Za-z]:[!-Z^-'
+    + '~]+)])';
 
 implementation
 

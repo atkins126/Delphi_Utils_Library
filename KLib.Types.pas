@@ -40,14 +40,20 @@ interface
 
 uses
   Vcl.Graphics,
-  IdFTPCommon;
+  System.Generics.Collections;
 
 type
+  THostPort = record
+    host: string;
+    port: integer;
+  end;
 
   TCredentials = record
     username: string;
     password: string;
   end;
+
+  TIdFTPTransferType = (ftASCII, ftBinary);
 
   TFTPCredentials = record
     credentials: TCredentials;
@@ -87,6 +93,12 @@ type
     height: integer;
   end;
 
+  TDateTimeRange = record
+    _start: TDateTime;
+    _end: TDateTime;
+    function getAsString: string;
+  end;
+
   TResource = record
     name: string;
     _type: string;
@@ -118,6 +130,25 @@ type
 
   TAsyncMethodStatus = (created, pending, fulfilled, rejected);
 
+  TListOfDoubles = class(TList<Double>)
+  end;
+
+  TArrayOfStrings = TArray<string>;
+
 implementation
+
+uses
+  System.SysUtils;
+
+function TDateTimeRange.getAsString: string;
+
+var
+  _startDataTimeAsString: string;
+  _endDataTimeAsString: string;
+begin
+  _startDataTimeAsString := DateTimeToStr(self._start);
+  _endDataTimeAsString := DateTimeToStr(self._end);
+  Result := _startDataTimeAsString + ' - ' + _endDataTimeAsString;
+end;
 
 end.
