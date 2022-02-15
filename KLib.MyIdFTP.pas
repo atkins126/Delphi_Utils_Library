@@ -1,5 +1,5 @@
 {
-  KLib Version = 1.0
+  KLib Version = 2.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -47,7 +47,7 @@ type
   public
     defaultDir: string;
     constructor create(FTPCredentials: TFTPCredentials); overload;
-    procedure connect;
+    procedure Connect; reintroduce;
     procedure put(sourceFileName: string; targetFileName: string; force: boolean = NOT_FORCE_OVERWRITE); overload;
     procedure deleteFileIfExists(filename: string);
     procedure makeDirIfNotExists(dirName: string);
@@ -83,7 +83,7 @@ begin
   defaultDir := FTPCredentials.pathFTPDir;
 end;
 
-procedure TMyIdFTP.connect;
+procedure TMyIdFTP.Connect;
 begin
   inherited;
   if defaultDir <> '' then

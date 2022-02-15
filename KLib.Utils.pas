@@ -1,5 +1,5 @@
 {
-  KLib Version = 1.0
+  KLib Version = 2.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -43,6 +43,11 @@ uses
   Vcl.Imaging.pngimage,
   System.SysUtils, System.Classes;
 
+type
+  TStringListHelper = class helper for TStringList
+    procedure AddStrings(strings: array of string); overload;
+  end;
+
 procedure deleteFilesInDirWithStartingFileName(dirName: string; startingFileName: string; fileType: string = EMPTY_STRING);
 function checkIfFileExistsAndEmpty(fileName: string): boolean;
 procedure deleteFileIfExists(fileName: string);
@@ -77,12 +82,15 @@ procedure unzip(zipFileName: string; destinationDir: string; deleteZipAfterUnzip
 
 function checkRequiredFTPProperties(FTPCredentials: TFTPCredentials): boolean;
 
+function getValidItalianTelephoneNumber(number: string): string;
 function getValidTelephoneNumber(number: string): string;
 
 function getRandString(size: integer = 5): string;
 
 function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): string;
-function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TstringList;
+function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TStringList;
+
+procedure saveToFile(source: string; fileName: string);
 
 function getCombinedPath(path1: string; path2: string): string;
 
@@ -101,7 +109,7 @@ function getParsedXMLstring(mainString: string): string; //todo add to myString
 function getDoubleQuotedString(mainString: string): string;
 function getSingleQuotedString(mainString: string): string;
 function getMainStringWithSubStringInserted(mainString: string; insertedString: string; index: integer): string;
-function getStringWithoutLineBreaks(mainString: string; substituteString: string = SPACE_string): string;
+function getStringWithoutLineBreaks(mainString: string; substituteString: string = SPACE_STRING): string;
 
 function getCSVFieldFromStringAsDate(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): TDate; overload;
 function getCSVFieldFromStringAsDate(mainString: string; index: integer; formatSettings: TFormatSettings; delimiter: Char = SEMICOLON_DELIMITER): TDate; overload;
@@ -111,17 +119,24 @@ function getCSVFieldFromStringAsInteger(mainString: string; index: integer; deli
 function getCSVFieldFromString(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): string;
 
 function getNumberOfLinesInStrFixedWordWrap(source: string): integer;
-function strToStrFixedWordWrap(source: string; fixedLen: Integer): string;
-function strToStringList(source: string; fixedLen: Integer): TstringList;
-function stringToStringListWithDelimiter(value: string; delimiter: Char): TstringList;
+function stringToStrFixedWordWrap(source: string; fixedLen: Integer): string;
+function stringToStringListWithFixedLen(source: string; fixedLen: Integer): TStringList;
+function stringToStringListWithDelimiter(value: string; delimiter: Char): TStringList;
+function stringToTStringList(source: string): TStringList;
 
-procedure splitStrings(source: string; delimiter: string; var destFirstString: string; var destSecondString: string);
+function arrayOfStringToTStringList(arrayOfStrings: array of string): TStringList;
+
+procedure splitStrings(source: string; delimiter: string; var destFirstString: string; var destSecondString: string); overload;
+procedure splitStrings(source: string; delimiterPosition: integer; var destFirstString: string; var destSecondString: string); overload;
 function getMergedStrings(firstString: string; secondString: string; delimiter: string = EMPTY_STRING): string;
 
 function checkIfEmailIsValid(email: string): boolean;
 
 function checkIfMainStringContainsSubStringNoCaseSensitive(mainString: string; subString: string): boolean;
 function checkIfMainStringContainsSubString(mainString: string; subString: string; caseSensitiveSearch: boolean = true): boolean;
+
+function getDoubleAsString(value: Double; decimalSeparator: char = DECIMAL_SEPARATOR_IT): string;
+function getFloatToStrDecimalSeparator: char;
 
 procedure tryToExecuteProcedure(myProcedure: TAnonymousMethod; raiseExceptionEnabled: boolean = false); overload;
 procedure tryToExecuteProcedure(myProcedure: TCallBack; raiseExceptionEnabled: boolean = false); overload;
@@ -136,11 +151,25 @@ uses
   Vcl.ExtCtrls,
   System.Zip, System.IOUtils, System.StrUtils, System.Character, System.RegularExpressions, System.Variants;
 
+procedure TStringListHelper.AddStrings(strings: array of string);
+var
+  _stringList: TStringList;
+begin
+  _stringList := arrayOfStringToTStringList(strings);
+  try
+    AddStrings(_stringList);
+  finally
+    begin
+      FreeAndNil(_stringList);
+    end;
+  end;
+end;
+
 procedure deleteFilesInDirWithStartingFileName(dirName: string; startingFileName: string; fileType: string = EMPTY_STRING);
 const
   IGNORE_CASE = true;
 var
-  _files: TstringList;
+  _files: TStringList;
   _file: string;
   _fileName: string;
 begin
@@ -191,9 +220,9 @@ end;
 function getTextFromFile(fileName: string): string;
 var
   text: string;
-  _stringList: TstringList;
+  _stringList: TStringList;
 begin
-  _stringList := TstringList.Create;
+  _stringList := TStringList.Create;
   try
     _stringList.LoadFromFile(fileName);
     text := _stringList.Text;
@@ -363,14 +392,7 @@ var
   _MD5ChecksumFile: string;
 begin
   _MD5ChecksumFile := getMD5ChecksumFile(fileName);
-  if UpperCase(_MD5ChecksumFile) = UpperCase(MD5) then
-  begin
-    result := true;
-  end
-  else
-  begin
-    result := false;
-  end;
+  Result := (UpperCase(_MD5ChecksumFile) = UpperCase(MD5));
 end;
 
 procedure unzipResource(nameResource: string; destinationDir: string);
@@ -439,12 +461,12 @@ end;
 function getResourceAsString(resource: TResource): string;
 var
   resourceStream: TResourceStream;
-  _stringList: TstringList;
+  _stringList: TStringList;
   resourceAsString: string;
 begin
   resourceAsString := '';
   resourceStream := getResourceAsStream(resource);
-  _stringList := TstringList.Create;
+  _stringList := TStringList.Create;
   _stringList.LoadFromStream(resourceStream);
   resourceAsString := _stringList.Text;
   resourceStream.Free;
@@ -502,6 +524,49 @@ begin
   Result := _result;
 end;
 
+function getValidItalianTelephoneNumber(number: string): string;
+var
+  telephoneNumber: string;
+  _number: string;
+  i: integer;
+begin
+  telephoneNumber := '';
+  _number := trim(number);
+
+  if _number = '' then
+  begin
+    telephoneNumber := '';
+  end
+  else
+  begin
+    if _number.StartsWith('0039') then
+    begin
+      _number := StringReplace(_number, '0039', '+39', []);
+    end;
+
+    if not _number.StartsWith('+') then
+    begin
+      _number := '+39' + _number;
+    end;
+
+    if not _number.StartsWith('+39') then
+    begin
+      _number := StringReplace(_number, '+', '+39', []);
+    end;
+
+    telephoneNumber := '+';
+    for i := 2 to length(_number) do
+    begin
+      if _number[i].IsNumber then
+      begin
+        telephoneNumber := telephoneNumber + _number[i];
+      end;
+    end;
+  end;
+
+  Result := telephoneNumber;
+end;
+
 function getValidTelephoneNumber(number: string): string;
 const
   ERR_MSG = 'Telephone number is empty.';
@@ -556,7 +621,7 @@ const
   ERR_MSG = 'No files found.';
 var
   fileName: string;
-  _fileNamesList: TstringList;
+  _fileNamesList: TStringList;
 begin
   _fileNamesList := getFileNamesListInDir(dirName, fileType, fullPath);
   if _fileNamesList.Count > 0 then
@@ -575,15 +640,15 @@ begin
   Result := fileName;
 end;
 
-function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TstringList;
+function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TStringList;
 var
-  fileNamesList: TstringList;
+  fileNamesList: TStringList;
   _searchRec: TSearchRec;
   _mask: string;
   _fileExists: boolean;
   _fileName: string;
 begin
-  fileNamesList := TstringList.Create;
+  fileNamesList := TStringList.Create;
   _mask := getCombinedPath(dirName, '*');
   if fileType <> EMPTY_STRING then
   begin
@@ -602,6 +667,18 @@ begin
   end;
 
   Result := fileNamesList;
+end;
+
+procedure saveToFile(source: string; fileName: string);
+var
+  _stringList: TStringList;
+begin
+  try
+    _stringList := stringToTStringList(source);
+    _stringList.SaveToFile(fileName);
+  finally
+    FreeAndNil(_stringList);
+  end;
 end;
 
 function getCombinedPath(path1: string; path2: string): string;
@@ -737,7 +814,7 @@ begin
   Result := _result;
 end;
 
-function getStringWithoutLineBreaks(mainString: string; substituteString: string = SPACE_string): string;
+function getStringWithoutLineBreaks(mainString: string; substituteString: string = SPACE_STRING): string;
 var
   stringWithoutLineBreaks: string;
 begin
@@ -802,7 +879,7 @@ function getCSVFieldFromString(mainString: string; index: integer; delimiter: Ch
 const
   ERR_MSG = 'Field index out of range.';
 var
-  _stringList: TstringList;
+  _stringList: TStringList;
   _result: string;
 begin
   _stringList := stringToStringListWithDelimiter(mainString, delimiter);
@@ -824,24 +901,23 @@ end;
 
 function getNumberOfLinesInStrFixedWordWrap(source: string): integer;
 var
-  _stringList: TstringList;
+  _stringList: TStringList;
   _result: integer;
 begin
-  _stringList := TstringList.Create;
-  _stringList.Text := source;
+  _stringList := stringToTStringList(source);
   _result := _stringList.Count;
   FreeAndNil(_stringList);
 
   Result := _result;
 end;
 
-function strToStrFixedWordWrap(source: string; fixedLen: Integer): string;
+function stringToStrFixedWordWrap(source: string; fixedLen: Integer): string;
 var
-  _stringList: TstringList;
+  _stringList: TStringList;
   _text: string;
   _result: string;
 begin
-  _stringList := strToStringList(source, fixedLen);
+  _stringList := stringToStringListWithFixedLen(source, fixedLen);
   _text := _stringList.Text;
   FreeAndNil(_stringList);
   Delete(_text, length(_text), 1);
@@ -850,13 +926,13 @@ begin
   Result := _result;
 end;
 
-function strToStringList(source: string; fixedLen: integer): TstringList;
+function stringToStringListWithFixedLen(source: string; fixedLen: integer): TStringList;
 var
-  stringList: TstringList;
+  stringList: TStringList;
   i: Integer;
   _sourceLen: Integer;
 begin
-  stringList := TstringList.Create;
+  stringList := TStringList.Create;
   stringList.LineBreak := #13;
   if fixedLen = 0 then
   begin
@@ -876,17 +952,40 @@ begin
   result := stringList;
 end;
 
-function stringToStringListWithDelimiter(value: string; delimiter: Char): TstringList;
+function stringToStringListWithDelimiter(value: string; delimiter: Char): TStringList;
 var
-  _stringList: TstringList;
+  _stringList: TStringList;
 begin
-  _stringList := TstringList.Create;
+  _stringList := TStringList.Create;
   _stringList.Clear;
   _stringList.Delimiter := delimiter;
   _stringList.StrictDelimiter := True;
   _stringList.DelimitedText := value;
 
   Result := _stringList;
+end;
+
+function stringToTStringList(source: string): TStringList;
+var
+  _stringList: TStringList;
+begin
+  _stringList := TStringList.Create;
+  _stringList.Text := source;
+  Result := _stringList;
+end;
+
+function arrayOfStringToTStringList(arrayOfStrings: array of string): TStringList;
+var
+  stringList: TStringList;
+  _string: string;
+begin
+  stringList := TStringList.Create;
+  for _string in arrayOfStrings do
+  begin
+    stringList.Add(_string);
+  end;
+
+  Result := stringList;
 end;
 
 procedure splitStrings(source: string; delimiter: string; var destFirstString: string; var destSecondString: string);
@@ -904,6 +1003,25 @@ begin
     _lengthDestSecondString := Length(source) - _endIndexDelimiter + 1;
     destFirstString := Copy(source, 0, _lengthDestFirstString);
     destSecondString := Copy(source, _endIndexDelimiter, _lengthDestSecondString);
+  end
+  else
+  begin
+    destFirstString := source;
+    destSecondString := '';
+  end;
+end;
+
+procedure splitStrings(source: string; delimiterPosition: integer; var destFirstString: string; var destSecondString: string);
+var
+  _lenghtSource: integer;
+  _lengthDestSecondString: integer;
+begin
+  _lenghtSource := Length(source);
+  if _lenghtSource > delimiterPosition then
+  begin
+    _lengthDestSecondString := _lenghtSource - delimiterPosition;
+    destFirstString := Copy(source, 0, delimiterPosition);
+    destSecondString := Copy(source, delimiterPosition + 1, _lengthDestSecondString);
   end
   else
   begin
@@ -946,6 +1064,28 @@ begin
   end;
 
   Result := _result;
+end;
+
+function getDoubleAsString(value: Double; decimalSeparator: char = DECIMAL_SEPARATOR_IT): string;
+var
+  _doubleAsString: string;
+  _FloatToStrDecimalSeparator: char;
+begin
+  _doubleAsString := FloatToStr(value);
+  _FloatToStrDecimalSeparator := getFloatToStrDecimalSeparator;
+  _doubleAsString := StringReplace(_doubleAsString, _FloatToStrDecimalSeparator, decimalSeparator, [rfReplaceAll]);
+  Result := _doubleAsString;
+end;
+
+function getFloatToStrDecimalSeparator: char;
+const
+  VALUE_WITH_DECIMAL_SEPARATOR = 0.1;
+  DECIMAL_SEPARATOR_INDEX = 2;
+var
+  _doubleAsString: string;
+begin
+  _doubleAsString := FloatToStr(VALUE_WITH_DECIMAL_SEPARATOR);
+  Result := _doubleAsString[DECIMAL_SEPARATOR_INDEX];
 end;
 
 procedure tryToExecuteProcedure(myProcedure: TProcedure; raiseExceptionEnabled: boolean = false);
