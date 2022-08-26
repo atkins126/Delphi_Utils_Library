@@ -40,7 +40,9 @@ interface
 
 const
   DATE_FORMAT = 'yyyy-mm-dd';
+  DATE_FORMAT_ITALIAN = 'dd/mm/yyyy';
   DATETIME_FORMAT = 'yyyy-mm-dd hh:nn:ss';
+  DATETIME_FORMAT_ITALIAN = 'dd/mm/yyyy hh:nn:ss';
   TIMESTAMP_FORMAT = 'yyyymmddhhnnss';
 
   SEMICOLON_DELIMITER = ';';
@@ -48,7 +50,11 @@ const
   DECIMAL_SEPARATOR_IT = ',';
   MYSQL_DECIMAL_SEPARATOR = '.';
 
+  WINDOWS_PATH_DELIMITER = '\';
+  LINUX_PATH_DELIMITER = '/';
+
   LOCALHOST_IP_ADDRESS = '127.0.0.1';
+  FTP_DEFAULT_PORT = 21;
 
   _1_MB_IN_BYTES = 1048576;
 
@@ -66,6 +72,9 @@ const
   EVERYONE_GROUP = 'Everyone';
   USERS_GROUP = 'Users';
 
+  SERVICES_REGKEY = '\SYSTEM\CurrentControlSet\Services';
+  EVENTLOG_APPLICATION_REGKEY = SERVICES_REGKEY + '\EventLog\Application';
+
   C_DRIVE = 'C';
 
   RANDOM_STRING = '99~@(To4h7KeFSX|{T2M';
@@ -79,7 +88,11 @@ const
   FORCE = true;
   FORCE_OVERWRITE = FORCE;
   FORCE_DELETE = FORCE;
+  FORCE_CREATION = true;
+  FORCE_SUSPEND = true;
 
+  RAISE_EXCEPTION = true;
+  RAISE_EXCEPTION_DISABLED = false;
   //Keystroke Message Flag
   //https://docs.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input
   //https://www.win.tue.nl/~aeb/linux/kbd/scancodes-1.html

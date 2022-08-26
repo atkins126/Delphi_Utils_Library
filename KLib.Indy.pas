@@ -72,7 +72,7 @@ function getMD5ChecksumFile(fileName: string): string;
 implementation
 
 uses
-  KLib.Validate, KLib.Utils, KLib.MyIdHTTP,
+  KLib.Validate, KLib.Utils, KLib.MyIdHTTP, KLib.MyStringList,
   IdGlobal, IdHash, IdHashMessageDigest, IdSSLOpenSSL, IdFTPCommon, IdTCPClient,
   System.SysUtils;
 
@@ -169,15 +169,19 @@ var
 begin
   validateRequiredFTPProperties(FTPCredentials);
   connection := TIdFTP.Create(nil);
-  with FTPCredentials do
+
+  with connection do
   begin
-    connection.host := server;
-    with credentials do
-    begin
-      connection.username := username;
-      connection.password := password;
-    end;
-    connection.TransferType := TIdFTPTransferType(transferType);
+    Host := FTPCredentials.server;
+    Username := FTPCredentials.credentials.username;
+    Password := FTPCredentials.credentials.password;
+    Port := FTPCredentials.port;
+    TransferType := TIdFTPTransferType(FTPCredentials.transferType);
+  end;
+
+  if connection.Port = 0 then
+  begin
+    connection.Port := FTP_DEFAULT_PORT;
   end;
 
   //todo create function checkIFEnumIsInValidRange

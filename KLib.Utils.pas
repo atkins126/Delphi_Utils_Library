@@ -43,11 +43,7 @@ uses
   Vcl.Imaging.pngimage,
   System.SysUtils, System.Classes;
 
-type
-  TStringListHelper = class helper for TStringList
-    procedure AddStrings(strings: array of string); overload;
-  end;
-
+procedure deleteFilesInDir(pathDir: string; const filesToKeep: array of string);
 procedure deleteFilesInDirWithStartingFileName(dirName: string; startingFileName: string; fileType: string = EMPTY_STRING);
 function checkIfFileExistsAndEmpty(fileName: string): boolean;
 procedure deleteFileIfExists(fileName: string);
@@ -59,13 +55,16 @@ function getIndexOfDrive(drive: char): integer;
 function getDriveExe: char;
 function getDirSize(path: string): int64;
 function getCombinedPathWithCurrentDir(pathToCombine: string): string;
+function DirExe: string;
 function getDirExe: string;
 procedure createDirIfNotExists(dirName: string);
+function exeFileName: string;
+function getExeFileName: string;
 
 function checkIfIsLinuxSubDir(subDir: string; mainDir: string): boolean;
 function getPathInLinuxStyle(path: string): string;
 
-function checkIfIsSubDir(subDir: string; mainDir: string): boolean;
+function checkIfIsSubDir(subDir: string; mainDir: string; trailingPathDelimiter: char = SPACE_STRING): boolean;
 function getValidFullPath(fileName: string): string;
 
 function checkMD5File(fileName: string; MD5: string): boolean;
@@ -151,17 +150,27 @@ uses
   Vcl.ExtCtrls,
   System.Zip, System.IOUtils, System.StrUtils, System.Character, System.RegularExpressions, System.Variants;
 
-procedure TStringListHelper.AddStrings(strings: array of string);
+procedure deleteFilesInDir(pathDir: string; const filesToKeep: array of string);
 var
-  _stringList: TStringList;
+  _fileNamesList: TStringList;
+  _fileName: string;
+  _nameOfFile: string;
+  _keepFile: boolean;
 begin
-  _stringList := arrayOfStringToTStringList(strings);
+  validateThatDirExists(pathDir);
+  _fileNamesList := getFileNamesListInDir(pathDir);
   try
-    AddStrings(_stringList);
-  finally
+    for _fileName in _fileNamesList do
     begin
-      FreeAndNil(_stringList);
+      _nameOfFile := ExtractFileName(_fileName);
+      _keepFile := MatchText(_nameOfFile, filesToKeep);
+      if not _keepFile then
+      begin
+        deleteFileIfExists(_fileName);
+      end;
     end;
+  finally
+    FreeAndNil(_fileNamesList);
   end;
 end;
 
@@ -192,7 +201,7 @@ var
   _result: boolean;
 begin
   _result := false;
-  if fileexists(fileName) then
+  if FileExists(fileName) then
   begin
     AssignFile(_file, fileName);
     Reset(_file);
@@ -322,16 +331,20 @@ end;
 function getCombinedPathWithCurrentDir(pathToCombine: string): string;
 var
   _result: string;
-  _currentDir: string;
 begin
-  _currentDir := getDirExe;
-  _result := getCombinedPath(_currentDir, pathToCombine);
+  _result := getCombinedPath(DirExe, pathToCombine);
+
   Result := _result;
+end;
+
+function DirExe: string;
+begin
+  Result := getDirExe;
 end;
 
 function getDirExe: string;
 begin
-  result := ExtractFileDir(ParamStr(0));
+  Result := ExtractFileDir(getExeFileName);
 end;
 
 procedure createDirIfNotExists(dirName: string);
@@ -347,6 +360,16 @@ begin
   end;
 end;
 
+function ExeFileName: string;
+begin
+  Result := getExeFileName;
+end;
+
+function getExeFileName: string;
+begin
+  Result := ParamStr(0);
+end;
+
 function checkIfIsLinuxSubDir(subDir: string; mainDir: string): boolean;
 var
   _subDir: string;
@@ -355,7 +378,7 @@ var
 begin
   _subDir := getPathInLinuxStyle(subDir);
   _mainDir := getPathInLinuxStyle(mainDir);
-  _isSubDir := checkIfIsSubDir(_subDir, _mainDir);
+  _isSubDir := checkIfIsSubDir(_subDir, _mainDir, LINUX_PATH_DELIMITER);
   result := _isSubDir
 end;
 
@@ -367,24 +390,40 @@ begin
   result := _path;
 end;
 
-function checkIfIsSubDir(subDir: string; mainDir: string): boolean;
+function checkIfIsSubDir(subDir: string; mainDir: string; trailingPathDelimiter: char = SPACE_STRING): boolean;
 var
-  _isSubDir: Boolean;
+  isSubDir: Boolean;
+  _subDir: string;
+  _mainDir: string;
+  _trailingPathDelimiter: char;
 begin
-  mainDir := LowerCase(mainDir);
-  subDir := LowerCase(subDir);
-  _isSubDir := AnsiStartsStr(subDir, mainDir);
-  result := _isSubDir;
+  _subDir := LowerCase(subDir);
+  _mainDir := LowerCase(mainDir);
+  _trailingPathDelimiter := trailingPathDelimiter;
+  if _trailingPathDelimiter = SPACE_STRING then
+  begin
+    _trailingPathDelimiter := PathDelim;
+  end;
+
+  if not(AnsiRightStr(_mainDir, 1) = _trailingPathDelimiter) then
+  begin
+    _mainDir := _mainDir + _trailingPathDelimiter;
+  end;
+
+  isSubDir := AnsiStartsStr(_mainDir, _subDir);
+
+  Result := isSubDir;
 end;
 
 function getValidFullPath(fileName: string): string;
 var
-  _path: string;
+  path: string;
 begin
-  _path := fileName;
-  _path := ExpandFileName(_path);
-  _path := ExcludeTrailingPathDelimiter(_path);
-  result := _path;
+  path := fileName;
+  path := ExpandFileName(path);
+  path := ExcludeTrailingPathDelimiter(path);
+
+  Result := path;
 end;
 
 function checkMD5File(fileName: string; MD5: string): boolean;
@@ -392,6 +431,7 @@ var
   _MD5ChecksumFile: string;
 begin
   _MD5ChecksumFile := getMD5ChecksumFile(fileName);
+
   Result := (UpperCase(_MD5ChecksumFile) = UpperCase(MD5));
 end;
 
@@ -409,9 +449,9 @@ end;
 
 function getPNGResource(nameResource: string): TPngImage;
 var
+  resourceAsPNG: TPngImage;
   _resource: TResource;
   resourceStream: TResourceStream;
-  resourceAsPNG: TPngImage;
 begin
   with _resource do
   begin
@@ -422,6 +462,7 @@ begin
   resourceAsPNG := TPngImage.Create;
   resourceAsPNG.LoadFromStream(resourceStream);
   resourceStream.Free;
+
   Result := resourceAsPNG;
 end;
 
@@ -440,13 +481,19 @@ end;
 procedure _getResourceAsFile_(nameResource: string; typeResource: string; destinationFileName: string);
 var
   _resource: TResource;
+  _destinationFileName: string;
 begin
   with _resource do
   begin
     name := nameResource;
     _type := typeResource;
   end;
-  getResourceAsFile(_resource, destinationFileName);
+  _destinationFileName := destinationFileName;
+  if not LowerCase(_destinationFileName).EndsWith('.' + LowerCase(typeResource)) then
+  begin
+    _destinationFileName := _destinationFileName + '.' + LowerCase(typeResource);
+  end;
+  getResourceAsFile(_resource, _destinationFileName);
 end;
 
 procedure getResourceAsFile(resource: TResource; destinationFileName: string);
@@ -460,9 +507,9 @@ end;
 
 function getResourceAsString(resource: TResource): string;
 var
+  resourceAsString: string;
   resourceStream: TResourceStream;
   _stringList: TStringList;
-  resourceAsString: string;
 begin
   resourceAsString := '';
   resourceStream := getResourceAsStream(resource);
@@ -470,13 +517,14 @@ begin
   _stringList.LoadFromStream(resourceStream);
   resourceAsString := _stringList.Text;
   resourceStream.Free;
+
   Result := resourceAsString;
 end;
 
 function getResourceAsStream(resource: TResource): TResourceStream;
 var
   resourceStream: TResourceStream;
-  errMsg: string;
+  _errMsg: string;
 begin
   with resource do
   begin
@@ -487,10 +535,11 @@ begin
     end
     else
     begin
-      errMsg := 'Not found a resource with name : ' + name + ' and type : ' + _type;
-      raise Exception.Create(errMsg);
+      _errMsg := 'Not found a resource with name : ' + name + ' and type : ' + _type;
+      raise Exception.Create(_errMsg);
     end;
   end;
+
   Result := resourceStream;
 end;
 
@@ -498,9 +547,9 @@ procedure unzip(zipFileName: string; destinationDir: string; deleteZipAfterUnzip
 const
   ERR_MSG = 'Invalid zip file.';
 begin
-  if tzipfile.isvalid(zipFileName) then
+  if TZipFile.isvalid(zipFileName) then
   begin
-    tzipfile.extractZipfile(zipFileName, destinationDir);
+    TZipFile.extractZipfile(zipFileName, destinationDir);
     if (deleteZipAfterUnzip) then
     begin
       deleteFileIfExists(zipFileName);
@@ -518,7 +567,8 @@ var
 begin
   with FTPCredentials do
   begin
-    _result := (server <> EMPTY_STRING) and (credentials.username <> EMPTY_STRING) and (credentials.password <> EMPTY_STRING);
+    _result := (server <> EMPTY_STRING) and (credentials.username <> EMPTY_STRING) and (credentials.password <> EMPTY_STRING)
+      and (port >= 0);
   end;
 
   Result := _result;
@@ -599,21 +649,22 @@ function getRandString(size: integer = 5): string;
 const
   ALPHABET: array [1 .. 62] of char = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 var
-  _randString: string;
+  randString: string;
   _randCharacter: char;
   _randIndexOfAlphabet: integer;
   _lengthAlphabet: integer;
   i: integer;
 begin
-  _randString := '';
+  randString := '';
   _lengthAlphabet := length(ALPHABET);
   for i := 1 to size do
   begin
     _randIndexOfAlphabet := random(_lengthAlphabet) + 1;
     _randCharacter := ALPHABET[_randIndexOfAlphabet];
-    _randString := _randString + _randCharacter;
+    randString := randString + _randCharacter;
   end;
-  Result := _randString;
+
+  Result := randString;
 end;
 
 function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): string;
@@ -637,6 +688,7 @@ begin
   begin
     raise Exception.Create(ERR_MSG);
   end;
+
   Result := fileName;
 end;
 
@@ -711,6 +763,7 @@ var
 begin
   _indexDayOfWeek := DayOfWeek(date) - 1;
   _nameDay := DAYS_OF_WEEK[_indexDayOfWeek];
+
   Result := _nameDay;
 end;
 
@@ -721,15 +774,16 @@ end;
 
 function getDateTimeAsString(date: TDateTime): string;
 var
+  dateTimeAsString: string;
   _date: string;
   _time: string;
-  _dateTime: string;
 begin
   _date := getDateAsString(date);
   _time := TimeToStr(date);
   _time := stringReplace(_time, ':', EMPTY_STRING, [rfReplaceAll, rfIgnoreCase]);
-  _dateTime := _date + '_' + _time;
-  Result := _dateTime;
+  dateTimeAsString := _date + '_' + _time;
+
+  Result := dateTimeAsString;
 end;
 
 function getCurrentDateAsString: string;
@@ -739,11 +793,12 @@ end;
 
 function getDateAsString(date: TDateTime): string;
 var
-  _date: string;
+  dateAsString: string;
 begin
-  _date := DateToStr(date);
-  _date := stringReplace(_date, '/', '_', [rfReplaceAll, rfIgnoreCase]);
-  Result := _date;
+  dateAsString := DateToStr(date);
+  dateAsString := stringReplace(dateAsString, '/', '_', [rfReplaceAll, rfIgnoreCase]);
+
+  Result := dateAsString;
 end;
 
 function getCurrentTimeStamp: string;
@@ -758,10 +813,11 @@ end;
 
 function getDateTimeAsStringWithFormatting(value: TDateTime; formatting: string = DATE_FORMAT): string;
 var
-  _dateTimeAsStringWithFormatting: string;
+  dateTimeAsStringWithFormatting: string;
 begin
-  _dateTimeAsStringWithFormatting := FormatDateTime(formatting, value);
-  Result := _dateTimeAsStringWithFormatting;
+  dateTimeAsStringWithFormatting := FormatDateTime(formatting, value);
+
+  Result := dateTimeAsStringWithFormatting;
 end;
 
 function getCurrentDateTime: TDateTime;
@@ -820,6 +876,7 @@ var
 begin
   stringWithoutLineBreaks := stringReplace(mainString, #13#10, substituteString, [rfReplaceAll]);
   stringWithoutLineBreaks := stringReplace(stringWithoutLineBreaks, #10, substituteString, [rfReplaceAll]);
+
   Result := stringWithoutLineBreaks;
 end;
 
@@ -1040,6 +1097,7 @@ var
   _result: boolean;
 begin
   _result := TRegEx.IsMatch(email, REGEX_VALID_EMAIL);
+
   Result := _result;
 end;
 
