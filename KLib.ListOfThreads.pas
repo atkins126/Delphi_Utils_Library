@@ -34,46 +34,42 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.Math;
+unit KLib.ListOfThreads;
 
 interface
 
 uses
-  System.Types;
+  System.Classes, System.Generics.Collections;
 
-function distanceBetweenPoints(a: TPoint; b: TPoint): Double; overload;
-function distanceBetweenPoints(Xa: integer; Ya: integer; Xb: integer; Yb: integer): Double; overload;
-function megabyteToByte(MB: int64): int64;
+type
+  TListOfThreads = class(TList<TThread>)
+  public
+    procedure WaitFor;
+    destructor Destroy; override;
+  end;
 
 implementation
 
-uses
-  KLib.Constants,
-  System.Math;
-
-function distanceBetweenPoints(a: TPoint; b: TPoint): Double; overload;
+procedure TListOfThreads.WaitFor;
 var
-  Xa, Ya, Xb, Yb: integer;
+  _thread: TThread;
 begin
-  Xa := a.X;
-  Ya := a.Y;
-  Xb := b.X;
-  Yb := b.Y;
-
-  Result := distanceBetweenPoints(Xa, Ya, Xb, Yb);
+  for _thread in Self do
+  begin
+    _thread.WaitFor;
+  end;
 end;
 
-function distanceBetweenPoints(Xa: integer; Ya: integer; Xb: integer; Yb: integer): Double; overload;
-begin
-  Result := sqrt(Power(Xa - Xb, 2) + Power(Ya - Yb, 2));
-end;
-
-function megabyteToByte(MB: int64): int64;
+Destructor TListOfThreads.Destroy;
 var
-  bytes: int64;
+  _thread: TThread;
 begin
-  bytes := MB * _1_MB_IN_BYTES;
-  Result := bytes;
+  for _thread in Self do
+  begin
+    _thread.Free;
+  end;
+
+  inherited;
 end;
 
 end.

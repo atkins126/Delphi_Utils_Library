@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -78,8 +78,20 @@ type
     procedure setParamAsString(paramName: string; value: string;
       caseSensitive: boolean = false);
 
-    procedure doubleQuoted;
-    procedure singleQuoted;
+    procedure parseXML;
+    procedure doubleQuote;
+    procedure singleQuote;
+    procedure quote(quotedCharacter: Char);
+    procedure extractString(quoteString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED);
+    procedure dequote;
+    procedure removeLineBreaks(substituteString: string = SPACE_STRING);
+    procedure fixedWordWrap(fixedLen: Integer);
+    procedure insertSubString(subString: string; index: integer);
+
+    function getVariantType(destinationTypeAsString: string): Variant;
+    function getNumberOfLines: integer;
+    function checkIfContainsSubStringNoCaseSensitive(subString: string): boolean;
+    function checkIfContainsSubString(subString: string; caseSensitiveSearch: boolean = true): boolean;
   end;
 
 implementation
@@ -105,7 +117,7 @@ procedure TMyStringHelper.setParamAsDoubleQuotedDateTimeWithFormatting(paramName
 var
   _dateTimeAsStringWithFormatting: string;
 begin
-  _dateTimeAsStringWithFormatting := getDateTimeAsStringWithFormatting(value, formatting);
+  _dateTimeAsStringWithFormatting := getDateTimeWithFormattingAsString(value, formatting);
   setParamAsDoubleQuotedString(paramName, _dateTimeAsStringWithFormatting, caseSensitive);
 end;
 
@@ -144,7 +156,7 @@ procedure TMyStringHelper.setParamAsSingleQuotedDateTimeWithFormatting(paramName
 var
   _dateTimeAsStringWithFormatting: string;
 begin
-  _dateTimeAsStringWithFormatting := getDateTimeAsStringWithFormatting(value, formatting);
+  _dateTimeAsStringWithFormatting := getDateTimeWithFormattingAsString(value, formatting);
   setParamAsSingleQuotedString(paramName, _dateTimeAsStringWithFormatting, caseSensitive);
 end;
 
@@ -183,7 +195,7 @@ procedure TMyStringHelper.setParamAsDateTimeWithFormatting(paramName: string; va
 var
   _dateTimeAsStringWithFormatting: string;
 begin
-  _dateTimeAsStringWithFormatting := getDateTimeAsStringWithFormatting(value, formatting);
+  _dateTimeAsStringWithFormatting := getDateTimeWithFormattingAsString(value, formatting);
   setParamAsString(paramName, _dateTimeAsStringWithFormatting, caseSensitive);
 end;
 
@@ -217,14 +229,69 @@ begin
   end;
 end;
 
-procedure TMyStringHelper.doubleQuoted;
+procedure TMyStringHelper.parseXML;
+begin
+  Self := getParsedXMLstring(Self);
+end;
+
+procedure TMyStringHelper.doubleQuote;
 begin
   Self := getDoubleQuotedString(Self);
 end;
 
-procedure TMyStringHelper.singleQuoted;
+procedure TMyStringHelper.singleQuote;
 begin
   Self := getSingleQuotedString(Self);
+end;
+
+procedure TMyStringHelper.quote(quotedCharacter: Char);
+begin
+  Self := getQuotedString(Self, quotedCharacter);
+end;
+
+procedure TMyStringHelper.extractString(quoteString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED);
+begin
+  Self := getExtractedString(Self, quoteString, raiseExceptionEnabled);
+end;
+
+procedure TMyStringHelper.dequote;
+begin
+  Self := getDequotedString(Self);
+end;
+
+function TMyStringHelper.getVariantType(destinationTypeAsString: string): Variant;
+begin
+  Result := stringToVariantType(Self, destinationTypeAsString);
+end;
+
+procedure TMyStringHelper.removeLineBreaks(substituteString: string = SPACE_STRING);
+begin
+  Self := getStringWithoutLineBreaks(Self, substituteString);
+end;
+
+procedure TMyStringHelper.fixedWordWrap(fixedLen: Integer);
+begin
+  Self := stringToStrFixedWordWrap(Self, fixedLen);
+end;
+
+procedure TMyStringHelper.insertSubString(subString: string; index: integer);
+begin
+  Self := getMainStringWithSubStringInserted(Self, subString, index);
+end;
+
+function TMyStringHelper.getNumberOfLines: integer;
+begin
+  Result := getNumberOfLinesInStrFixedWordWrap(Self);
+end;
+
+function TMyStringHelper.checkIfContainsSubStringNoCaseSensitive(subString: string): boolean;
+begin
+  Result := checkIfMainStringContainsSubStringNoCaseSensitive(Self, subString);
+end;
+
+function TMyStringHelper.checkIfContainsSubString(subString: string; caseSensitiveSearch: boolean = true): boolean;
+begin
+  Result := checkIfMainStringContainsSubString(Self, subString, caseSensitiveSearch);
 end;
 
 end.

@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -41,13 +41,27 @@ interface
 uses
   Vcl.Graphics,
   IdFTPCommon,
-  System.Generics.Collections;
+  System.Generics.Collections, System.SysUtils;
 
 const
   ftASCII = TIdFTPTransferType(0);
   ftBinary = TIdFTPTransferType(1);
 
 type
+{$scopedenums ON}
+  TTypeOfProcedure = (_null, _procedure, _method, _anonymousMethod);
+
+  TAsyncMethodStatus = (_null, created, pending, fulfilled, rejected);
+
+  TStatus = (_null, created, stopped, paused, running);
+
+  TExecutionMode = (_null, gui, service, console);
+
+  TType = (_null, _string, _integer, _double, _char, _boolean);
+
+  TFileSystemTimeType = (created, modified, accessed);
+{$scopedenums OFF}
+
   THostPort = record
     host: string;
     port: integer;
@@ -129,16 +143,14 @@ type
     procedure clear;
   end;
 
-  TTypeOfProcedure = (_procedure, _method, _anonymousMethod);
-
-  TAnonymousMethod = reference to procedure;
-  TArrayOfAnonymousMethods = array of TAnonymousMethod;
-
   TMethod = procedure of object;
   TArrayOfMethods = array of TMethod;
 
   TProcedure = procedure;
   TArrayOfProcedures = array of TProcedure;
+
+  TAnonymousMethod = reference to procedure;
+  TArrayOfAnonymousMethods = array of TAnonymousMethod;
 
   TCallBack = reference to procedure(msg: string = '');
 
@@ -148,6 +160,8 @@ type
 
     procedure clear;
   end;
+
+  TExecutorFunction = reference to procedure(resolve: TCallBack; reject: TCallback);
 
   TAsyncifyMethodReply = record
     handle: THandle;
@@ -162,19 +176,20 @@ type
 
   TArrayOfStrings = TArray<string>;
 
-{$scopedenums ON}
-  TAsyncMethodStatus = (created, pending, fulfilled, rejected);
+  TArrayOfWord = array of Word;
 
-  TThreadStatus = (_null, created, stopped, paused, running);
-{$scopedenums OFF}
+  EExit = class(EAbort);
+  //####--EXAMPLE USE
+  //    raise EExit.Create('force exit in reject procedure');
+  //            if (e.ClassType <> EExit) then
+  //            begin
+  //              reject(e.Message);
+  //            end;
+  //####---
 
 implementation
 
-uses
-  System.SysUtils;
-
 function TDateTimeRange.getAsString: string;
-
 var
   _startDataTimeAsString: string;
   _endDataTimeAsString: string;

@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -359,7 +359,7 @@ var
 begin
 {$hints OFF}
   _handleServiceControlManager := 0;
-  _handleService := 0;
+  //  _handleService := 0;
 {$hints ON}
   try
     _handleServiceControlManager := OpenSCManager(PChar(nameMachine), nil, SC_MANAGER_CONNECT);
@@ -373,7 +373,7 @@ begin
   end;
   serviceExists := GetLastError() = ERROR_SUCCESS;
 
-  if (_handleServiceControlManager = 0) or (_handleService = 0) then
+  if (_handleServiceControlManager = 0) then
   begin
     _errMsg := ERR_MSG;
     try

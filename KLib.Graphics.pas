@@ -1,5 +1,5 @@
 {
-  KLib Version = 2.0
+  KLib Version = 3.0
   The Clear BSD License
 
   Copyright (c) 2020 by Karol De Nery Ortiz LLave. All rights reserved.
@@ -105,6 +105,8 @@ procedure setComponentInMiddlePosition(control: TControl);
 procedure loadImgFileToTImage(img: TImage; pathImgFile: string); //todo keep version with devexpress and see the differences
 //!not include in realease!
 
+function getImageAsAnsiString(fileName: string): AnsiString;
+
 function myMessageDlg(title: string; msg: string; buttons: TArrayOfStrings; defaultButton: string = '';
   msgDlgType: TMsgDlgType = TMsgDlgType.mtCustom): string; //new version of customMessageDlg
 function customMessageDlg(msg: string; dlgType: TMsgDlgType; buttons: TMsgDlgButtons;
@@ -123,7 +125,7 @@ function getHeightOfSingleCharacter(myFont: TFont): integer;
 implementation
 
 uses
-  KLib.Utils, KLib.Generic,
+  KLib.Utils, KLib.Generics, KLib.Validate,
   Winapi.Windows,
   System.SysUtils, System.Types;
 
@@ -448,6 +450,32 @@ end;
 //  img.Picture.Graphic := _img;
 //end;
 
+function getImageAsAnsiString(fileName: string): AnsiString;
+var
+  imageAsString: AnsiString;
+
+  _pic: TPicture;
+  _memoryStream: TMemoryStream;
+begin
+  validateThatFileExists(fileName);
+
+  _pic := TPicture.Create;
+  _memoryStream := TMemoryStream.Create;
+  try
+    _pic.LoadFromFile(fileName);
+
+    _pic.Graphic.SaveToStream(_memoryStream);
+    _memoryStream.Position := 0;
+    SetLength(imageAsString, _memoryStream.Size);
+    _memoryStream.ReadBuffer(imageAsString[1], _memoryStream.Size);
+  finally
+    _pic.Free;
+    _memoryStream.Free;
+  end;
+
+  Result := imageAsString;
+end;
+
 function myMessageDlg(title: string; msg: string; buttons: TArrayOfStrings; defaultButton: string = '';
   msgDlgType: TMsgDlgType = TMsgDlgType.mtCustom): string;
 const
@@ -482,7 +510,7 @@ begin
   _countButtons := Length(buttons);
   Assert(_countButtons <= MAX_NUMBER_BUTTONS, ERR_MSG);
 
-  _indexOfDefaultButton := TGeneric.getElementIndexFromArray<string>(buttons, defaultButton);
+  _indexOfDefaultButton := TGenerics.getElementIndexFromArray<string>(buttons, defaultButton);
   if _indexOfDefaultButton = -1 then
   begin
     _indexOfDefaultButton := 0;
@@ -519,7 +547,7 @@ begin
 
   if (_messageDialogResult <> mrNo) and (_messageDialogResult <> mrOk) and (_messageDialogResult <> mrCancel) then
   begin
-    _RESULTS_BUTTONS_index := TGeneric.getElementIndexFromArray<integer>(RESULTS_BUTTONS, _messageDialogResult);
+    _RESULTS_BUTTONS_index := TGenerics.getElementIndexFromArray<integer>(RESULTS_BUTTONS, _messageDialogResult);
     _result := buttons[_RESULTS_BUTTONS_index];
   end
   else
