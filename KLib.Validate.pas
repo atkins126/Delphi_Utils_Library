@@ -53,6 +53,9 @@ procedure validateThatVC_Redist2013X86IsInstalled(errMsg: string = 'Microsoft Vi
 procedure validateThatVC_Redist2013X64IsInstalled(errMsg: string = 'Microsoft Visual C++ Redistributable 2013 x64 not correctly installed.');
 procedure validateThatVC_Redist2019X64IsInstalled(errMsg: string = 'Microsoft Visual C++ Redistributable 2019 x64 not correctly installed.');
 //-------------------
+procedure validateThatServiceIsRunning(nameService: string; errMsg: string = 'Service isn''t running.');
+procedure validateThatServiceIsNotRunning(nameService: string; ignoreExceptionIfServiceNotExists: boolean = FORCE;
+  errMsg: string = 'Service is running.');
 procedure validateThatServiceNotExists(nameService: string; errMsg: string = 'Service already exists.');
 procedure validateThatServiceExists(nameService: string; errMsg: string = 'Service doesn''t exists.');
 
@@ -99,16 +102,17 @@ procedure validateThatUserIsNotAdmin(errMsg: string = 'User have administrator p
 procedure validateThatExistsKeyIn_HKEY_LOCAL_MACHINE(key: string; errMsg: string = 'Key doesn''t exists in HKEY_LOCAL_MACHINE.');
 procedure validateThatNotExistsKeyIn_HKEY_LOCAL_MACHINE(key: string; errMsg: string = 'Key exists in HKEY_LOCAL_MACHINE.');
 
-procedure validateThatIsWindowsSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder.');
-procedure validateThatIsLinuxSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder.');
-procedure validateThatIsSubDir(subDir: string; mainDir: string; trailingPathDelimiter: char = SPACE_STRING; errMsg: string = 'It is not a subfolder.');
+procedure validateThatIsWindowsSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder of:');
+procedure validateThatIsLinuxSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder of:');
+procedure validateThatIsSubDir(subDir: string; mainDir: string; trailingPathDelimiter: char = SPACE_STRING;
+  errMsg: string = 'It is not a subfolder of:');
 
 procedure validateThatWindowExists(className: string = 'TMyForm'; captionForm: string = 'Caption of MyForm';
   errMsg: string = 'No window was found.');
 
 procedure validateThatStringIsNotEmpty(value: string; errMsg: string = 'Value is empty.');
 
-procedure exceptionIfCannotDeleteFile(fileName: string; errMsg: string = 'Cannot delete file.');
+procedure validateDeleteFile(fileName: string; errMsg: string = 'Cannot delete file.');
 
 procedure validateThatEditIsNotEmpty(myForm: TForm; myEdit: TCustomEdit; myEditDisplayName: string = '';
   errMsg: string = 'The field cannot be empty.');
@@ -174,7 +178,48 @@ begin
   end;
 end;
 
-//##################################################################à
+//##################################################################
+procedure validateThatServiceIsRunning(nameService: string; errMsg: string = 'Service isn''t running.');
+var
+  _errMsg: string;
+begin
+  if TWindowsService.checkIfIsRunning(nameService) then
+  begin
+    _errMsg := getDoubleQuotedString(nameService) + ' : ' + errMsg;
+    raise Exception.Create(_errMsg);
+  end;
+end;
+
+procedure validateThatServiceIsNotRunning(nameService: string; ignoreExceptionIfServiceNotExists: boolean = FORCE;
+  errMsg: string = 'Service is running.');
+var
+  _checkEnabled: boolean;
+  _errMsg: string;
+begin
+  _checkEnabled := false;
+
+  if ignoreExceptionIfServiceNotExists then
+  begin
+    if TWindowsService.checkIfExists(nameService) then
+    begin
+      _checkEnabled := true;
+    end;
+  end
+  else
+  begin
+    _checkEnabled := true;
+  end;
+
+  if _checkEnabled then
+  begin
+    if not TWindowsService.checkIfIsRunning(nameService) then
+    begin
+      _errMsg := getDoubleQuotedString(nameService) + ' : ' + errMsg;
+      raise Exception.Create(_errMsg);
+    end;
+  end;
+end;
+
 procedure validateThatServiceNotExists(nameService: string; errMsg: string = 'Service already exists.');
 var
   _errMsg: string;
@@ -296,7 +341,7 @@ procedure validateThatDirNotExists(dirName: string; errMsg: string = 'Directory 
 var
   _errMsg: string;
 begin
-  if DirectoryExists(dirName) then
+  if checkIfDirExists(dirName) then
   begin
     _errMsg := getDoubleQuotedString(dirName) + ' : ' + errMsg;
     raise Exception.Create(_errMsg);
@@ -307,7 +352,7 @@ procedure validateThatDirExists(dirName: string; errMsg: string = 'Directory doe
 var
   _errMsg: string;
 begin
-  if not DirectoryExists(dirName) then
+  if not checkIfDirExists(dirName) then
   begin
     _errMsg := getDoubleQuotedString(dirName) + ' : ' + errMsg;
     raise Exception.Create(_errMsg);
@@ -464,27 +509,37 @@ begin
   end;
 end;
 
-procedure validateThatIsWindowsSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder.');
+procedure validateThatIsWindowsSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder of:');
+var
+  _errMsg: string;
 begin
   if not checkIfIsWindowsSubDir(subDir, mainDir) then
   begin
-    raise Exception.Create(errMsg);
+    _errMsg := getDoubleQuotedString(subDir) + ' : ' + errMsg + ' ' + getDoubleQuotedString(mainDir);
+    raise Exception.Create(_errMsg);
   end;
 end;
 
-procedure validateThatIsLinuxSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder.');
+procedure validateThatIsLinuxSubDir(subDir: string; mainDir: string; errMsg: string = 'It is not a subfolder of:');
+var
+  _errMsg: string;
 begin
   if not checkIfIsLinuxSubDir(subDir, mainDir) then
   begin
-    raise Exception.Create(errMsg);
+    _errMsg := getDoubleQuotedString(subDir) + ' : ' + errMsg + ' ' + getDoubleQuotedString(mainDir);
+    raise Exception.Create(_errMsg);
   end;
 end;
 
-procedure validateThatIsSubDir(subDir: string; mainDir: string; trailingPathDelimiter: char = SPACE_STRING; errMsg: string = 'It is not a subfolder.');
+procedure validateThatIsSubDir(subDir: string; mainDir: string; trailingPathDelimiter: char = SPACE_STRING;
+  errMsg: string = 'It is not a subfolder of:');
+var
+  _errMsg: string;
 begin
   if not checkIfIsSubDir(subDir, mainDir, trailingPathDelimiter) then
   begin
-    raise Exception.Create(errMsg);
+    _errMsg := getDoubleQuotedString(subDir) + ' : ' + errMsg + ' ' + getDoubleQuotedString(mainDir);
+    raise Exception.Create(_errMsg);
   end;
 end;
 
@@ -508,7 +563,7 @@ begin
   end;
 end;
 
-procedure exceptionIfCannotDeleteFile(fileName: string; errMsg: string = 'Cannot delete file.');
+procedure validateDeleteFile(fileName: string; errMsg: string = 'Cannot delete file.');
 var
   _errMsg: string;
 begin

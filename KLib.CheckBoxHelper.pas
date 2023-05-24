@@ -34,64 +34,28 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.Math;
+unit KLib.CheckBoxHelper;
 
 interface
 
 uses
-  System.Types;
+  Vcl.StdCtrls;
 
-function distanceBetweenPoints(a: TPoint; b: TPoint): Double; overload;
-function distanceBetweenPoints(Xa: integer; Ya: integer; Xb: integer; Yb: integer): Double; overload;
-function megabyteToByte(MB: int64): int64;
-function getMax(const a: integer; const b: integer): integer;
+type
+  TCheckBoxHelper = class helper for TCheckBox
+    procedure setCheckedWithoutClick(AChecked: Boolean);
+  end;
 
 implementation
 
-uses
-  KLib.Constants,
-  System.Math;
-
-function distanceBetweenPoints(a: TPoint; b: TPoint): Double; overload;
-var
-  Xa, Ya, Xb, Yb: integer;
+procedure TCheckBoxHelper.setCheckedWithoutClick(AChecked: Boolean);
 begin
-  Xa := a.X;
-  Ya := a.Y;
-  Xb := b.X;
-  Yb := b.Y;
-
-  Result := distanceBetweenPoints(Xa, Ya, Xb, Yb);
-end;
-
-function distanceBetweenPoints(Xa: integer; Ya: integer; Xb: integer; Yb: integer): Double; overload;
-begin
-  Result := sqrt(Power(Xa - Xb, 2) + Power(Ya - Yb, 2));
-end;
-
-function megabyteToByte(MB: int64): int64;
-var
-  bytes: int64;
-begin
-  bytes := MB * _1_MB_IN_BYTES;
-
-  Result := bytes;
-end;
-
-function getMax(const a: integer; const b: integer): integer;
-var
-  max: integer;
-begin
-  if a >= b then
-  begin
-    max := A
-  end
-  else
-  begin
-    max := B;
+  ClicksDisabled := True;
+  try
+    Checked := AChecked;
+  finally
+    ClicksDisabled := False;
   end;
-
-  Result := max;
 end;
 
 end.

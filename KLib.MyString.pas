@@ -47,10 +47,9 @@ type
   TMyStringHelper = record helper for myString
     procedure setParamAsDoubleQuotedDate(paramName: string; value: TDateTime;
       caseSensitive: boolean = false);
-    procedure setParamAsDoubleQuotedDateTime(paramName: string; value: TDateTime;
-      caseSensitive: boolean = false);
-    procedure setParamAsDoubleQuotedDateTimeWithFormatting(paramName: string; value: TDateTime;
-      formatting: string; caseSensitive: boolean = false);
+    procedure setParamAsDoubleQuotedDateTime(paramName: string;
+      value: TDateTime; caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
+    procedure setParamAsDoubleQuotedInteger(paramName: string; value: integer; caseSensitive: boolean = false);
     procedure setParamAsDoubleQuotedFloat(paramName: string; value: Double;
       decimalSeparator: char = DECIMAL_SEPARATOR_IT; caseSensitive: boolean = false);
     procedure setParamAsDoubleQuotedString(paramName: string; value: string;
@@ -58,10 +57,9 @@ type
 
     procedure setParamAsSingleQuotedDate(paramName: string; value: TDateTime;
       caseSensitive: boolean = false);
-    procedure setParamAsSingleQuotedDateTime(paramName: string; value: TDateTime;
-      caseSensitive: boolean = false);
-    procedure setParamAsSingleQuotedDateTimeWithFormatting(paramName: string; value: TDateTime;
-      formatting: string; caseSensitive: boolean = false);
+    procedure setParamAsSingleQuotedDateTime(paramName: string;
+      value: TDateTime; caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
+    procedure setParamAsSingleQuotedInteger(paramName: string; value: integer; caseSensitive: boolean = false);
     procedure setParamAsSingleQuotedFloat(paramName: string; value: Double;
       decimalSeparator: char = DECIMAL_SEPARATOR_IT; caseSensitive: boolean = false);
     procedure setParamAsSingleQuotedString(paramName: string; value: string;
@@ -70,15 +68,15 @@ type
     procedure setParamAsDate(paramName: string; value: TDateTime;
       caseSensitive: boolean = false);
     procedure setParamAsDateTime(paramName: string; value: TDateTime;
-      caseSensitive: boolean = false);
-    procedure setParamAsDateTimeWithFormatting(paramName: string; value: TDateTime;
-      formatting: string; caseSensitive: boolean = false);
+      caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
+    procedure setParamAsInteger(paramName: string; value: integer; caseSensitive: boolean = false);
     procedure setParamAsFloat(paramName: string; value: Double;
       decimalSeparator: char = DECIMAL_SEPARATOR_IT; caseSensitive: boolean = false);
     procedure setParamAsString(paramName: string; value: string;
       caseSensitive: boolean = false);
 
-    procedure parseXML;
+    procedure escapeXML;
+    procedure escapeJSON;
     procedure doubleQuote;
     procedure singleQuote;
     procedure quote(quotedCharacter: Char);
@@ -103,22 +101,24 @@ uses
 procedure TMyStringHelper.setParamAsDoubleQuotedDate(paramName: string; value: TDateTime;
   caseSensitive: boolean = false);
 begin
-  setParamAsDoubleQuotedDateTimeWithFormatting(paramName, value, DATE_FORMAT, caseSensitive);
+  setParamAsDoubleQuotedDateTime(paramName, value, caseSensitive, DATE_FORMAT);
 end;
 
-procedure TMyStringHelper.setParamAsDoubleQuotedDateTime(paramName: string; value: TDateTime;
-  caseSensitive: boolean = false);
-begin
-  setParamAsDoubleQuotedDateTimeWithFormatting(paramName, value, DATETIME_FORMAT, caseSensitive);
-end;
-
-procedure TMyStringHelper.setParamAsDoubleQuotedDateTimeWithFormatting(paramName: string; value: TDateTime;
-  formatting: string; caseSensitive: boolean = false);
+procedure TMyStringHelper.setParamAsDoubleQuotedDateTime(paramName: string;
+  value: TDateTime; caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
 var
   _dateTimeAsStringWithFormatting: string;
 begin
   _dateTimeAsStringWithFormatting := getDateTimeWithFormattingAsString(value, formatting);
   setParamAsDoubleQuotedString(paramName, _dateTimeAsStringWithFormatting, caseSensitive);
+end;
+
+procedure TMyStringHelper.setParamAsDoubleQuotedInteger(paramName: string; value: integer; caseSensitive: boolean = false);
+var
+  _integerAsString: string;
+begin
+  _integerAsString := IntToStr(value);
+  setParamAsDoubleQuotedString(paramName, _integerAsString, caseSensitive);
 end;
 
 procedure TMyStringHelper.setParamAsDoubleQuotedFloat(paramName: string; value: Double;
@@ -142,22 +142,24 @@ end;
 procedure TMyStringHelper.setParamAsSingleQuotedDate(paramName: string; value: TDateTime;
   caseSensitive: boolean = false);
 begin
-  setParamAsSingleQuotedDateTimeWithFormatting(paramName, value, DATE_FORMAT, caseSensitive);
+  setParamAsSingleQuotedDateTime(paramName, value, caseSensitive, DATE_FORMAT);
 end;
 
-procedure TMyStringHelper.setParamAsSingleQuotedDateTime(paramName: string; value: TDateTime;
-  caseSensitive: boolean = false);
-begin
-  setParamAsSingleQuotedDateTimeWithFormatting(paramName, value, DATETIME_FORMAT, caseSensitive);
-end;
-
-procedure TMyStringHelper.setParamAsSingleQuotedDateTimeWithFormatting(paramName: string; value: TDateTime;
-  formatting: string; caseSensitive: boolean = false);
+procedure TMyStringHelper.setParamAsSingleQuotedDateTime(paramName: string;
+  value: TDateTime; caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
 var
   _dateTimeAsStringWithFormatting: string;
 begin
   _dateTimeAsStringWithFormatting := getDateTimeWithFormattingAsString(value, formatting);
   setParamAsSingleQuotedString(paramName, _dateTimeAsStringWithFormatting, caseSensitive);
+end;
+
+procedure TMyStringHelper.setParamAsSingleQuotedInteger(paramName: string; value: integer; caseSensitive: boolean = false);
+var
+  _integerAsString: string;
+begin
+  _integerAsString := IntToStr(value);
+  setParamAsSingleQuotedString(paramName, _integerAsString, caseSensitive);
 end;
 
 procedure TMyStringHelper.setParamAsSingleQuotedFloat(paramName: string; value: Double;
@@ -181,22 +183,24 @@ end;
 procedure TMyStringHelper.setParamAsDate(paramName: string; value: TDateTime;
   caseSensitive: boolean = false);
 begin
-  setParamAsDateTimeWithFormatting(paramName, value, DATETIME_FORMAT, caseSensitive);
+  setParamAsDateTime(paramName, value, caseSensitive);
 end;
 
 procedure TMyStringHelper.setParamAsDateTime(paramName: string; value: TDateTime;
-  caseSensitive: boolean = false);
-begin
-  setParamAsDateTimeWithFormatting(paramName, value, DATETIME_FORMAT, caseSensitive);
-end;
-
-procedure TMyStringHelper.setParamAsDateTimeWithFormatting(paramName: string; value: TDateTime;
-  formatting: string; caseSensitive: boolean = false);
+  caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
 var
   _dateTimeAsStringWithFormatting: string;
 begin
   _dateTimeAsStringWithFormatting := getDateTimeWithFormattingAsString(value, formatting);
   setParamAsString(paramName, _dateTimeAsStringWithFormatting, caseSensitive);
+end;
+
+procedure TMyStringHelper.setParamAsInteger(paramName: string; value: integer; caseSensitive: boolean = false);
+var
+  _integerAsString: string;
+begin
+  _integerAsString := IntToStr(value);
+  setParamAsString(paramName, _integerAsString, caseSensitive);
 end;
 
 procedure TMyStringHelper.setParamAsFloat(paramName: string; value: Double;
@@ -221,17 +225,22 @@ begin
 
   if caseSensitive then
   begin
-    Self := StringReplace(Self, _param, value, [rfReplaceAll]);
+    Self := myStringReplace(Self, _param, value, [rfReplaceAll]);
   end
   else
   begin
-    Self := StringReplace(Self, _param, value, [rfReplaceAll, rfIgnoreCase]);
+    Self := myStringReplace(Self, _param, value, [rfReplaceAll, rfIgnoreCase]);
   end;
 end;
 
-procedure TMyStringHelper.parseXML;
+procedure TMyStringHelper.escapeXML;
 begin
-  Self := getParsedXMLstring(Self);
+  Self := getEscapedXMLString(Self);
+end;
+
+procedure TMyStringHelper.escapeJSON;
+begin
+  Self := getEscapedJSONString(Self);
 end;
 
 procedure TMyStringHelper.doubleQuote;

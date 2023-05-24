@@ -78,6 +78,12 @@ type
     );
 
 procedure openWebPageWithDefaultBrowser(url: string);
+procedure openFileWithWord(fileName: string);
+function getWordExeFileName: string;
+function executeExeAsAdmin(fileName: string; params: string = ''; exceptionIfFunctionFails: boolean = true): integer;
+function executeExe(fileName: string; params: string = ''; exceptionIfFunctionFails: boolean = true): integer;
+function executeAndWaitExe(fileName: string; params: string = ''; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
+
 function shellExecuteOpen(fileName: string; params: string = ''; directory: string = ''; showWindowType: TShowWindowType = TShowWindowType._SW_NORMAL;
   exceptionIfFunctionFails: boolean = false): integer;
 
@@ -92,7 +98,6 @@ function shellExecuteExCMDAndWait(params: string; runAsAdmin: boolean = false;
   showWindowType: TShowWindowType = TShowWindowType._SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
 function shellExecuteExAndWait(fileName: string; params: string = ''; runAsAdmin: boolean = false;
   showWindowType: TShowWindowType = TShowWindowType._SW_HIDE; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
-function executeAndWaitExe(fileName: string; params: string = ''; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
 
 function netShare(targetDir: string; netName: string = ''; netPassw: string = '';
   grantAllPermissionToEveryoneGroup: boolean = false): string;
@@ -121,20 +126,20 @@ function checkIfWindowsGroupOrUserExists(windowsGroupOrUser: string): boolean;
 procedure createDesktopLink(fileName: string; nameDesktopLink: string; description: string);
 function getDesktopDirPath: string;
 
-procedure copyDirIntoTargetDir(sourceDir: string; targetDir: string; forceOverwrite: boolean = false);
-procedure copyDir(sourceDir: string; destinationDir: string; silent: boolean = true);
-procedure createHideDir(dirName: string; forceDelete: boolean = false);
-procedure deleteDirectoryIfExists(dirName: string; silent: boolean = true);
+procedure copyDirIntoTargetDir(sourceDir: string; targetDir: string; forceOverwrite: boolean = NOT_FORCE_OVERWRITE);
+procedure copyDir(sourceDir: string; destinationDir: string; silent: boolean = FORCE_SILENT);
+procedure createHideDir(dirName: string; forceDelete: boolean = FORCE_DELETE);
+procedure deleteDirectoryIfExists(dirName: string; silent: boolean = FORCE_SILENT);
 
 procedure moveFileIntoTargetDir(sourceFileName: string; targetDir: string);
 
 procedure myMoveFile(sourceFileName: string; targetFileName: string);
 
+procedure renameDir(oldDir: string; newDir: string; silent: boolean = FORCE_SILENT);
+
 procedure appendToFileInNewLine(filename: string; text: string; forceCreationFile: boolean = NOT_FORCE); overload;
 procedure appendToFile(filename: string; text: string; forceCreationFile: boolean = NOT_FORCE;
   forceAppendInNewLine: boolean = NOT_FORCE); overload;
-procedure createEmptyFileIfNotExists(filename: string);
-procedure createEmptyFile(filename: string);
 
 function checkIfIsWindowsSubDir(subDir: string; mainDir: string): boolean;
 function getParentDir(source: string): string;
@@ -161,20 +166,20 @@ function checkIfWindowExists(className: string = 'TMyForm'; captionForm: string 
 function myFindWindow(className: string = 'TMyForm'; captionForm: string = 'Caption of MyForm'): THandle;
 
 procedure writeIn_HKEY_LOCAL_MACHINE(key: string; name: string; value: Variant; forceCreationKey: boolean = NOT_FORCE);
-function readStringFrom_HKEY_LOCAL_MACHINE(key: string; name: string): string;
+function readStringFrom_HKEY_LOCAL_MACHINE(key: string; name: string = ''): string;
 function checkIfExistsKeyIn_HKEY_LOCAL_MACHINE(key: string): boolean;
 procedure deleteKeyInHKEY_LOCAL_MACHINE(key: string);
 
-procedure waitForMultiple(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = true);
-procedure waitFor(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = true);
+procedure waitForMultiple(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = MODAL_MODE);
+procedure waitFor(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = MODAL_MODE);
 
 procedure raiseLastSysErrorMessage;
 function getLastSysErrorMessage: string;
 
 function getLocaleDecimalSeparator: char;
 
-procedure terminateCurrentProcess(exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = false);
-procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = false);
+procedure terminateCurrentProcess(exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 
 //###########-----NOT WORK ON WINDOWS XP, WINDOWS SERVER 2003, AND EARLIER VERSIONS OF THE WINDOWS OPERATING SYSTEM------------############
 function checkIfCurrentProcessIsAServiceProcess: boolean;
@@ -448,6 +453,85 @@ begin
   shellExecuteOpen(url);
 end;
 
+procedure openFileWithWord(fileName: string);
+var
+  winwordFileName: string;
+begin
+  winwordFileName := getWordExeFileName();
+  shellExecuteOpen(winwordFileName, getDoubleQuotedString(fileName));
+end;
+
+function getWordExeFileName: string;
+const
+  REG_KEY = '\Software\Microsoft\Windows\CurrentVersion\App Paths\Winword.exe';
+begin
+  Result := readStringFrom_HKEY_LOCAL_MACHINE(REG_KEY);
+end;
+
+function executeExeAsAdmin(fileName: string; params: string = ''; exceptionIfFunctionFails: boolean = true): integer;
+var
+  returnCode: integer;
+begin
+  returnCode := shellExecuteExeAsAdmin(fileName, params, TShowWindowType._SW_HIDE, exceptionIfFunctionFails);
+
+  Result := returnCode;
+end;
+
+function executeExe(fileName: string; params: string = ''; exceptionIfFunctionFails: boolean = true): integer;
+var
+  returnCode: integer;
+begin
+  returnCode := shellExecuteExe(fileName, params, TShowWindowType._SW_HIDE, exceptionIfFunctionFails);
+
+  Result := returnCode;
+end;
+
+function executeAndWaitExe(fileName: string; params: string = ''; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
+var
+  returnCode: Longint;
+
+  _commad: String;
+  _startupInfo: TStartupInfo;
+  _processInfo: TProcessInformation;
+begin
+  returnCode := -1;
+
+  _commad := getDoubleQuotedString(fileName) + ' ' + trim(params);
+
+  FillChar(_startupInfo, sizeOf(_startupInfo), 0);
+  with _startupInfo do
+  begin
+    cb := SizeOf(TStartupInfo);
+    wShowWindow := Winapi.Windows.SW_HIDE;
+  end;
+  if not CreateProcess(nil, pchar(_commad), nil, nil, false,
+    //   CREATE_NO_WINDOW,
+    CREATE_NEW_CONSOLE or NORMAL_PRIORITY_CLASS, //TODO check if is ok
+    nil, nil, _startupInfo, _processInfo) then
+  begin
+    raiseLastSysErrorMessage;
+  end;
+
+  //TODO CHECK
+  waitForMultiple(_processInfo.hProcess);
+  //  waitFor(_processInfo.hProcess);
+
+  if not GetExitCodeProcess(_processInfo.hProcess, dword(returnCode)) then //assign return code
+  begin
+    raiseLastSysErrorMessage;
+  end;
+
+  CloseHandle(_processInfo.hProcess);
+  CloseHandle(_processInfo.hThread);
+
+  if (exceptionIfReturnCodeIsNot0) and (returnCode <> 0) then
+  begin
+    raise Exception.Create(fileName + ' exit code: ' + IntToStr(returnCode));
+  end;
+
+  Result := returnCode;
+end;
+
 function shellExecuteOpen(fileName: string; params: string = ''; directory: string = ''; showWindowType: TShowWindowType = TShowWindowType._SW_NORMAL;
   exceptionIfFunctionFails: boolean = false): integer;
 var
@@ -604,52 +688,6 @@ begin
   Result := returnCode;
 end;
 
-function executeAndWaitExe(fileName: string; params: string = ''; exceptionIfReturnCodeIsNot0: boolean = false): LongInt;
-var
-  returnCode: Longint;
-
-  _commad: String;
-  _startupInfo: TStartupInfo;
-  _processInfo: TProcessInformation;
-begin
-  returnCode := -1;
-
-  _commad := getDoubleQuotedString(fileName) + ' ' + trim(params);
-
-  FillChar(_startupInfo, sizeOf(_startupInfo), 0);
-  with _startupInfo do
-  begin
-    cb := SizeOf(TStartupInfo);
-    wShowWindow := Winapi.Windows.SW_HIDE;
-  end;
-  if not CreateProcess(nil, pchar(_commad), nil, nil, false,
-    //   CREATE_NO_WINDOW,
-    CREATE_NEW_CONSOLE or NORMAL_PRIORITY_CLASS, //TODO check if is ok
-    nil, nil, _startupInfo, _processInfo) then
-  begin
-    raiseLastSysErrorMessage;
-  end;
-
-  //TODO CHECK
-  waitForMultiple(_processInfo.hProcess);
-  //  waitFor(_processInfo.hProcess);
-
-  if not GetExitCodeProcess(_processInfo.hProcess, dword(returnCode)) then //assign return code
-  begin
-    raiseLastSysErrorMessage;
-  end;
-
-  CloseHandle(_processInfo.hProcess);
-  CloseHandle(_processInfo.hThread);
-
-  if (exceptionIfReturnCodeIsNot0) and (returnCode <> 0) then
-  begin
-    raise Exception.Create(fileName + ' exit code: ' + IntToStr(returnCode));
-  end;
-
-  Result := returnCode;
-end;
-
 type
   //----------------------------------
   SHARE_INFO_2 = record
@@ -729,7 +767,7 @@ begin
     begin
       _shareExistsAlready := true;
     end;
-    if not DirectoryExists(pathSharedDir) then
+    if not checkIfDirExists(pathSharedDir) then
     begin
       _errMsg := ERR_MSG + getDoubleQuotedString(_targetDir);
       raise Exception.Create(_errMsg);
@@ -953,15 +991,11 @@ begin
   Result := desktopDirPath;
 end;
 
-procedure copyDirIntoTargetDir(sourceDir: string; targetDir: string; forceOverwrite: boolean = false);
-const
-  ERR_MSG = 'Cannot rename: ';
+procedure copyDirIntoTargetDir(sourceDir: string; targetDir: string; forceOverwrite: boolean = NOT_FORCE_OVERWRITE);
 var
   _parentDirTargetDir: string;
   _sourceDirName: string;
   _tempTargetDir: string;
-
-  _err_msg: string;
 begin
   if forceOverwrite then
   begin
@@ -976,27 +1010,23 @@ begin
   _sourceDirName := ExtractFileName(getValidFullPathInWindowsStyle(sourceDir));
   _tempTargetDir := getCombinedPath(_parentDirTargetDir, _sourceDirName);
   copyDir(sourceDir, _parentDirTargetDir);
-  if not RenameFile(_tempTargetDir, targetDir) then
-  begin
-    _err_msg := ERR_MSG + getDoubleQuotedString(_tempTargetDir);
-    raise Exception.Create(_err_msg);
-  end;
+  renameDir(_tempTargetDir, targetDir);
 end;
 
 const
   SILENT_FLAGS: FILEOP_FLAGS = FOF_SILENT or FOF_NOCONFIRMATION;
 
-procedure copyDir(sourceDir: string; destinationDir: string; silent: boolean = true);
+procedure copyDir(sourceDir: string; destinationDir: string; silent: boolean = FORCE_SILENT);
 var
-  sHFileOpStruct: TSHFileOpStruct;
-  shFileOperationResult: integer;
+  _sHFileOpStruct: TSHFileOpStruct;
+  _shFileOperationResult: integer;
 begin
-  ZeroMemory(@sHFileOpStruct, SizeOf(sHFileOpStruct));
-  with sHFileOpStruct do
+  ZeroMemory(@_sHFileOpStruct, SizeOf(_sHFileOpStruct));
+  with _sHFileOpStruct do
   begin
     wFunc := FO_COPY;
-    pFrom := PChar(sourceDir + #0);
-    pTo := PChar(destinationDir);
+    pFrom := PChar(sourceDir + #0#0);
+    pTo := PChar(destinationDir + #0#0);
     if silent then
     begin
       fFlags := FOF_FILESONLY or SILENT_FLAGS;
@@ -1006,14 +1036,14 @@ begin
       fFlags := FOF_FILESONLY;
     end;
   end;
-  shFileOperationResult := ShFileOperation(sHFileOpStruct);
-  if shFileOperationResult <> 0 then
+  _shFileOperationResult := ShFileOperation(_sHFileOpStruct);
+  if _shFileOperationResult <> 0 then
   begin
     raise Exception.Create('Unable to copy ' + sourceDir + ' to ' + destinationDir);
   end;
 end;
 
-procedure createHideDir(dirName: string; forceDelete: boolean = false);
+procedure createHideDir(dirName: string; forceDelete: boolean = FORCE_DELETE);
 const
   ERR_MSG = 'Error creating hide dir.';
 begin
@@ -1032,32 +1062,32 @@ begin
   end;
 end;
 
-procedure deleteDirectoryIfExists(dirName: string; silent: boolean = true);
+procedure deleteDirectoryIfExists(dirName: string; silent: boolean = FORCE_SILENT);
 const
   ERR_MSG = 'Unable to delete :';
 var
-  sHFileOpStruct: TSHFileOpStruct;
-  shFileOperationResult: integer;
+  _sHFileOpStruct: TSHFileOpStruct;
+  _shFileOperationResult: integer;
 
-  errMsg: string;
+  _errMsg: string;
 begin
-  if DirectoryExists(dirName) then
+  if checkIfDirExists(dirName) then
   begin
-    ZeroMemory(@sHFileOpStruct, SizeOf(sHFileOpStruct));
-    with sHFileOpStruct do
+    ZeroMemory(@_sHFileOpStruct, SizeOf(_sHFileOpStruct));
+    with _sHFileOpStruct do
     begin
       wFunc := FO_DELETE;
-      pFrom := PChar(DirName + #0); //double zero-terminated
+      pFrom := PChar(DirName + #0#0); //double zero-terminated
       if silent then
       begin
         fFlags := SILENT_FLAGS;
       end
     end;
-    shFileOperationResult := SHFileOperation(sHFileOpStruct);
-    if (shFileOperationResult <> 0) or (DirectoryExists(dirName)) then
+    _shFileOperationResult := SHFileOperation(_sHFileOpStruct);
+    if (_shFileOperationResult <> 0) or (checkIfDirExists(dirName)) then
     begin
-      errMsg := ERR_MSG + dirName;
-      raise Exception.Create(errMsg);
+      _errMsg := ERR_MSG + dirName;
+      raise Exception.Create(_errMsg);
     end;
   end;
 end;
@@ -1098,6 +1128,38 @@ begin
   end;
 end;
 
+procedure renameDir(oldDir: string; newDir: string; silent: boolean = FORCE_SILENT);
+const
+  ERROR_CODE_SAMEFILE = 113;
+var
+  _sHFileOpStruct: TSHFileOpStruct;
+  _shFileOperationResult: integer;
+  _oldDir: string;
+  _newDir: string;
+begin
+  _oldDir := getValidFullPathInWindowsStyle(oldDir);
+  _newDir := getValidFullPathInWindowsStyle(newDir);
+  if _oldDir <> _newDir then
+  begin
+    ZeroMemory(@_sHFileOpStruct, SizeOf(_sHFileOpStruct));
+    with _sHFileOpStruct do
+    begin
+      wFunc := FO_RENAME;
+      pFrom := PChar(_oldDir + #0#0);
+      pTo := PChar(_newDir + #0#0);
+      if silent then
+      begin
+        fFlags := SILENT_FLAGS;
+      end;
+    end;
+    _shFileOperationResult := ShFileOperation(_sHFileOpStruct);
+    if (_shFileOperationResult <> 0) and (_shFileOperationResult <> ERROR_CODE_SAMEFILE) then
+    begin
+      raise Exception.Create('Unable to rename ' + _oldDir + ' to ' + _newDir);
+    end;
+  end;
+end;
+
 procedure appendToFileInNewLine(filename: string; text: string; forceCreationFile: boolean = NOT_FORCE);
 begin
   KLib.Windows.appendToFile(fileName, text, forceCreationFile, FORCE);
@@ -1126,29 +1188,6 @@ begin
   Append(_file);
   Write(_file, _text);
   CloseFile(_file);
-end;
-
-procedure createEmptyFileIfNotExists(filename: string);
-begin
-  if not checkIfFileExists(filename) then
-  begin
-    createEmptyFile(filename);
-  end;
-end;
-
-procedure createEmptyFile(filename: string);
-var
-  _handle: THandle;
-begin
-  _handle := FileCreate(fileName);
-  if _handle = INVALID_HANDLE_VALUE then
-  begin
-    raise Exception.Create('Error creating file: ' + fileName);
-  end
-  else
-  begin
-    FileClose(_handle);
-  end;
 end;
 
 function checkIfIsWindowsSubDir(subDir: string; mainDir: string): boolean;
@@ -1189,7 +1228,7 @@ function getPathInWindowsStyle(path: string): string;
 var
   pathInWindowsStyl: string;
 begin
-  pathInWindowsStyl := StringReplace(path, '/', '\', [rfReplaceAll, rfIgnoreCase]);
+  pathInWindowsStyl := myStringReplace(path, '/', '\', [rfReplaceAll, rfIgnoreCase]);
 
   Result := pathInWindowsStyl;
 end;
@@ -1218,7 +1257,7 @@ begin
       _newValue := GetEnvironmentVariable(copy(_valueToReplace, 2, length(_valueToReplace) - 2));
       if _newValue <> '' then
       begin
-        stringWithEnvVariablesReaded := stringreplace(stringWithEnvVariablesReaded, _valueToReplace, _newValue, []);
+        stringWithEnvVariablesReaded := KLib.Utils.myStringReplace(stringWithEnvVariablesReaded, _valueToReplace, _newValue, []);
       end;
     end
     else
@@ -1589,7 +1628,7 @@ begin
   end;
 end;
 
-function readStringFrom_HKEY_LOCAL_MACHINE(key: string; name: string): string;
+function readStringFrom_HKEY_LOCAL_MACHINE(key: string; name: string = ''): string;
 var
   value: string;
 
@@ -1640,7 +1679,7 @@ begin
   end;
 end;
 
-procedure waitForMultiple(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = true);
+procedure waitForMultiple(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = MODAL_MODE);
 const
   ERR_MSG_TIMEOUT = 'The timeout interval was elapsed.';
 var
@@ -1684,7 +1723,7 @@ begin
   end;
 end;
 
-procedure waitFor(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = true);
+procedure waitFor(processHandle: THandle; timeout: DWORD = INFINITE; modalMode: boolean = MODAL_MODE);
 const
   ERR_MSG_TIMEOUT = 'The timeout interval was elapsed.';
 var
@@ -1758,7 +1797,7 @@ begin
   Result := decimalSeparator;
 end;
 
-procedure terminateCurrentProcess(exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = false);
+procedure terminateCurrentProcess(exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _currentProcess: THandle;
 begin
@@ -1766,7 +1805,7 @@ begin
   myTerminateProcess(_currentProcess, exitCode, raiseExceptionEnabled);
 end;
 
-procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = false);
+procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _success: LongBool;
 begin

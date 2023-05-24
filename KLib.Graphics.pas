@@ -39,7 +39,7 @@ unit KLib.Graphics;
 interface
 
 uses
-  KLib.Types,
+  KLib.Types, KLib.Constants,
   Vcl.Graphics, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Controls, Vcl.Dialogs, Vcl.Forms,
   System.Classes;
 
@@ -107,12 +107,18 @@ procedure loadImgFileToTImage(img: TImage; pathImgFile: string); //todo keep ver
 
 function getImageAsAnsiString(fileName: string): AnsiString;
 
+function myOpenDialog(initialDir: string = EMPTY_STRING; filter: string = 'All |*.*'): string;
+
+procedure myShowMessage(msg: string; title: string = ''; confirmValue: string = 'ok');
+function confirmMessage(msg: string; title: string = ''; yesValue: string = 'yes'; noValue: string = 'no'): boolean;
 function myMessageDlg(title: string; msg: string; buttons: TArrayOfStrings; defaultButton: string = '';
   msgDlgType: TMsgDlgType = TMsgDlgType.mtCustom): string; //new version of customMessageDlg
 function customMessageDlg(msg: string; dlgType: TMsgDlgType; buttons: TMsgDlgButtons;
   captionButtons: array of string; dlgCaption: string): Integer; deprecated;
 
 function getComponentInFormByName(componentName: string; myForm: TForm): TComponent;
+
+procedure createFormByClassName(className: string);
 
 function getStrFixedWordWrapInWidth(source: string; width: integer; font: TFont): string;
 function getNumberOfCharactersInWidth(widthOfCaption: integer; font: TFont): integer;
@@ -476,6 +482,61 @@ begin
   Result := imageAsString;
 end;
 
+function myOpenDialog(initialDir: string = EMPTY_STRING; filter: string = 'All |*.*'): string;
+var
+  _result: string;
+
+  _opendialog: TOpenDialog;
+  _initialDir: string;
+begin
+  _initialDir := getValidFullPath(initialDir);
+  if (_initialDir = EMPTY_STRING) then
+  begin
+    _initialDir := GetCurrentDir;
+  end;
+
+  _opendialog := TOpenDialog.Create(nil);
+  try
+    _opendialog.InitialDir := _initialDir;
+    _opendialog.Options := [ofFileMustExist];
+    _opendialog.Filter := filter;
+    _opendialog.FilterIndex := 1;
+    _opendialog.execute;
+    _result := _opendialog.FileName;
+  finally
+    FreeAndNil(_opendialog)
+  end;
+
+  Result := _result;
+end;
+
+procedure myShowMessage(msg: string; title: string = ''; confirmValue: string = 'ok');
+var
+  _title: string;
+  _msg: string;
+begin
+  _title := title;
+  if (_title.IsEmpty()) then
+  begin
+    _title := Application.Title;
+  end;
+  _msg := msg.PadRight(60, ' ');
+
+  myMessageDlg(_title, _msg, [confirmValue]);
+end;
+
+function confirmMessage(msg: string; title: string = ''; yesValue: string = 'yes'; noValue: string = 'no'): boolean;
+var
+  _title: string;
+begin
+  _title := title;
+  if (_title.IsEmpty()) then
+  begin
+    _title := Application.Title;
+  end;
+  Result := myMessageDlg(_title, msg, [yesValue, noValue]) = yesValue;
+end;
+
 function myMessageDlg(title: string; msg: string; buttons: TArrayOfStrings; defaultButton: string = '';
   msgDlgType: TMsgDlgType = TMsgDlgType.mtCustom): string;
 const
@@ -605,6 +666,18 @@ begin
   if (result = nil) then
   begin
     raise Exception.Create(ERR_MSG);
+  end;
+end;
+
+procedure createFormByClassName(className: string);
+var
+  _form: TForm;
+begin
+  _form := TFormClass(FindClass(className)).Create(Application);
+  try
+    _form.Show;
+  finally
+    _form.Free;
   end;
 end;
 

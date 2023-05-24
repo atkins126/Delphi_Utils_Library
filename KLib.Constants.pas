@@ -62,6 +62,8 @@ const
   _1_MB_IN_BYTES = 1048576;
 
   CMD_EXE_NAME = 'cmd.exe';
+  //Sysnative is a virtual folder to accessing the 64-bit System32 folder from a 32-bit application
+  WINDOWS_SYSTEM32_PATH = 'C:\Windows\Sysnative';
 
   PNG_TYPE = 'PNG';
   ZIP_TYPE = 'ZIP';
@@ -71,6 +73,7 @@ const
   JSON_TYPE = 'JSON';
   RTF_TYPE = 'RTF';
   DLL_TYPE = 'DLL';
+  SQL_TYPE = 'SQL';
 
   EVERYONE_GROUP = 'Everyone';
   USERS_GROUP = 'Users';
@@ -95,6 +98,7 @@ const
   FORCE_DELETE = true;
   FORCE_CREATION = true;
   FORCE_SUSPEND = true;
+  FORCE_SILENT = true;
   RAISE_EXCEPTION = true;
   IGNORE_EMPTY_STRINGS = true;
   MODAL_MODE = true;
@@ -104,6 +108,10 @@ const
   DISABLE = false;
   NOT_FORCE = false;
   NOT_FORCE_OVERWRITE = false;
+  NOT_FORCE_DELETE = false;
+  NOT_FORCE_CREATION = false;
+  NOT_FORCE_SUSPEND = false;
+  NOT_FORCE_SILENT = false;
   RAISE_EXCEPTION_DISABLED = false;
   NOT_IGNORE_EMPTY_STRINGS = false;
   NOT_MODAL_MODE = false;
