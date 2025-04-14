@@ -40,7 +40,7 @@ interface
 
 uses
   KLib.Types, KLib.Constants,
-  IdFTP, IdHTTP,
+  IdFTP, IdHTTP, IdSMTP,
   System.Classes;
 
 procedure TCPPrintFilesInDir(hostPort: THostPort; dirName: string; fileType: string = EMPTY_STRING);
@@ -53,8 +53,19 @@ function getValidIdFTP(FTPCredentials: TFTPCredentials): TIdFTP;
 function checkFTPCredentials(FTPCredentials: TFTPCredentials): boolean;
 function getIdFTP(FTPCredentials: TFTPCredentials): TIdFTP;
 
+procedure sendEmail(settings: TSMTPSettings; email: TEmailMessage); overload;
+procedure sendEmail(smtp: TIdSMTP; email: TEmailMessage); overload;
+function getIdSMTP(settings: TSMTPSettings): TIdSMTP;
+
+function getOAuth2Response(const url: string; const clientID: string; const clientSecret: string): TOAuth2Response;
+function HTTP_get(url: string; paramList: TStringList; credentials: TCredentials): string; overload;
+function HTTP_get(url: string; paramList: TStringList; idHTTPRequest: TIdHTTPRequest = nil): string; overload;
 function HTTP_post(url: string; paramList: TStringList; credentials: TCredentials): string; overload;
+function HTTP_post(url: string; bearerToken: string; body: string; responseFileName: string = EMPTY_STRING): string; overload;
+function HTTP_post(url: string; body: string; idHTTPRequest: TIdHTTPRequest = nil; responseFileName: string = EMPTY_STRING): string; overload;
 function HTTP_post(url: string; paramList: TStringList; idHTTPRequest: TIdHTTPRequest = nil): string; overload;
+function HTTP_delete(url: string; bearerToken: string): string; overload;
+function HTTP_delete(url: string; idHTTPRequest: TIdHTTPRequest = nil): string; overload;
 //USING INDY WITH SSL (E.G downloadFileWithIndy) YOU NEED libeay32.dll, libssl32.dll, ssleay32.dll
 //INCLUDE RESOURCES IN YOUR PROJECT
 //  RESOURCE_LIBEAY32: TResource = (name: 'LIBEAY32'; _type: DLL_TYPE);
@@ -72,9 +83,10 @@ function getMD5ChecksumFile(fileName: string): string;
 implementation
 
 uses
-  KLib.Validate, KLib.Utils, KLib.MyIdHTTP, KLib.MyStringList, Klib.Windows,
+  KLib.Validate, KLib.Utils, KLib.MyIdHTTP, KLib.MyStringList, Klib.Windows, KLib.Generics.JSON,
   IdGlobal, IdHash, IdHashMessageDigest, IdSSLOpenSSL, IdFTPCommon, IdTCPClient,
-  System.SysUtils;
+  IdMessage, IdText, IdAttachmentFile, IdExplicitTLSClientServerBase,
+  System.SysUtils, System.NetEncoding;
 
 procedure TCPPrintFilesInDir(hostPort: THostPort; dirName: string; fileType: string = EMPTY_STRING);
 begin
@@ -193,6 +205,212 @@ begin
   Result := connection;
 end;
 
+procedure sendEmail(settings: TSMTPSettings; email: TEmailMessage);
+var
+  _smtp: TIdSMTP;
+begin
+  _smtp := getIdSMTP(settings);
+  try
+    _smtp.connect;
+    sendEmail(_smtp, email);
+  finally
+    _smtp.disconnect;
+    FreeAndNil(_smtp);
+  end;
+end;
+
+procedure sendEmail(smtp: TIdSMTP; email: TEmailMessage);
+var
+  _mail: TIdMessage;
+  _bodyPart: TIdText;
+begin
+  _mail := TIdMessage.Create(nil);
+  try
+    _mail.CharSet := 'utf-8';
+    validateThatEmailIsValid(email.FromAddress);
+    _mail.From.Address := email.FromAddress;
+    _mail.Subject := email.Subject;
+
+    for var i := 0 to Length(email.ToAddresses) - 1 do
+    begin
+      validateThatEmailIsValid(email.ToAddresses[i]);
+      _mail.Recipients.Add.Address := email.ToAddresses[i];
+    end;
+    for var i := 0 to Length(email.CcAddresses) - 1 do
+    begin
+      validateThatEmailIsValid(email.CcAddresses[i]);
+      _mail.CCList.Add.Address := email.CcAddresses[i];
+    end;
+    for var i := 0 to Length(email.BccAddresses) - 1 do
+    begin
+      validateThatEmailIsValid(email.BccAddresses[i]);
+      _mail.BCCList.Add.Address := email.BccAddresses[i];
+    end;
+
+    _mail.ContentType := 'multipart/mixed';
+
+    _bodyPart := TIdText.Create(_mail.MessageParts);
+    case email.contentType of
+      TContentType.text_plain:
+        _bodyPart.ContentType := 'text/plain; charset=UTF-8';
+      TContentType.text_html:
+        _bodyPart.ContentType := 'text/html; charset=UTF-8';
+    end;
+    _bodyPart.Body.Text := email.Body + sLineBreak + email.Signature;
+
+    for var i := 0 to Length(email.Attachments) - 1 do
+    begin
+      validateThatFileExists(email.Attachments[i]);
+      TIdAttachmentFile.Create(_mail.MessageParts, email.Attachments[i]);
+    end;
+    if not smtp.Connected then
+    begin
+      raise Exception.Create('SMTP not connected.');
+    end;
+
+    smtp.Send(_mail);
+  finally
+    _mail.Free;
+  end;
+end;
+
+function getIdSMTP(settings: TSMTPSettings): TIdSMTP;
+var
+  smtp: TIdSMTP;
+
+  _sslHandler: TIdSSLIOHandlerSocketOpenSSL;
+  //_oauth: TIdOAuth2BearerAuthenticator; todo adds oauth
+begin
+  smtp := TIdSMTP.Create(nil);
+
+  _sslHandler := TIdSSLIOHandlerSocketOpenSSL.Create(smtp);
+  smtp.IOHandler := _sslHandler;
+  case settings.provider of
+    TEmailProvider.custom:
+      begin
+        smtp.Host := settings.host;
+        smtp.Port := settings.port;
+        if (settings.useTls) then
+        begin
+          smtp.UseTLS := utUseExplicitTLS;
+        end;
+        if (not settings.useTls) then
+        begin
+          smtp.UseTLS := utNoTLSSupport;
+        end;
+      end;
+    TEmailProvider.gmail:
+      begin
+        smtp.Host := 'smtp.gmail.com';
+        smtp.Port := 587;
+        smtp.UseTLS := utUseExplicitTLS;
+      end;
+    TEmailProvider.outlook:
+      begin
+        smtp.Host := 'smtp-mail.outlook.com';
+        smtp.Port := 587;
+        smtp.UseTLS := utUseExplicitTLS;
+      end;
+  end;
+
+  _sslHandler.Host := smtp.Host;
+  _sslHandler.Port := smtp.Port;
+  if (settings.useTls) then
+  begin
+    _sslHandler.SSLOptions.Method := sslvTLSv1_2;
+  end;
+
+  if settings.accessToken <> '' then
+  begin
+    raise Exception.Create('Oauth not already supported');
+    //_oauth := TIdOAuth2BearerAuthenticator.Create(smtp);
+    //_oauth.AccessToken := settings.accessToken;
+    //smtp.AuthType := satSASL;
+    //smtp.SASLMechanisms.Add.SASL := _oauth;
+  end
+  else
+  begin
+    smtp.Username := settings.username;
+    smtp.Password := settings.password;
+    smtp.AuthType := satDefault;
+  end;
+
+  Result := smtp;
+end;
+
+function getOAuth2Response(const url: string; const clientID: string; const clientSecret: string): TOAuth2Response;
+var
+  OAuth2Response: TOAuth2Response;
+  _response: string;
+  _authHeader: string;
+  _idHTTPRequest: TIdHTTPRequest;
+  _params: TStringList;
+begin
+  _idHTTPRequest := TIdHTTPRequest.Create(nil);
+  _authHeader := 'Basic ' + TNetEncoding.Base64.Encode(clientID + ':' + clientSecret).Replace(#13#10, '');
+  _idHTTPRequest.CustomHeaders.Add('Authorization: ' + _authHeader);
+  _idHTTPRequest.ContentType := 'application/x-www-form-urlencoded';
+
+  _params := TStringList.Create();
+  _params.Add('grant_type=client_credentials');
+  try
+    _response := HTTP_post(url, _params, _idHTTPRequest);
+    OAuth2Response := TJSONGenerics.getParsedJSON<TOAuth2Response>(_response);
+  finally
+    FreeAndNil(_idHTTPRequest);
+    FreeAndNil(_params);
+  end;
+
+  Result := OAuth2Response;
+end;
+
+function HTTP_get(url: string; paramList: TStringList; credentials: TCredentials): string;
+var
+  HTTP_response: string;
+  _idHTTPRequest: TIdHTTPRequest;
+begin
+  _idHTTPRequest := TIdHTTPRequest.Create(nil);
+  try
+    if (not credentials.isEmpty()) then
+    begin
+      with _idHTTPRequest do
+      begin
+        BasicAuthentication := true;
+        Username := credentials.username;
+        Password := credentials.password;
+      end;
+    end;
+    HTTP_response := HTTP_get(url, paramList, _idHTTPRequest);
+  finally
+    FreeAndNil(_idHTTPRequest);
+  end;
+
+  Result := HTTP_response;
+end;
+
+function HTTP_get(url: string; paramList: TStringList; idHTTPRequest: TIdHTTPRequest = nil): string;
+var
+  HTTP_response: string;
+  _HTTP: TMyIdHTTP;
+  _url: string;
+begin
+  _HTTP := TMyIdHTTP.Create(nil);
+
+  if Assigned(idHTTPRequest) then
+  begin
+    _HTTP.Request := idHTTPRequest;
+  end;
+
+  _url := getHTTPGetEncodedUrl(url, paramList);
+  try
+    HTTP_response := _HTTP.Get(_url);
+  finally
+    _HTTP.Free;
+  end;
+
+  Result := HTTP_response;
+end;
+
 function HTTP_post(url: string; paramList: TStringList; credentials: TCredentials): string;
 var
   HTTP_response: string;
@@ -200,15 +418,75 @@ var
 begin
   _idHTTPRequest := TIdHTTPRequest.Create(nil);
   try
-    with _idHTTPRequest do
+    if (not credentials.isEmpty()) then
     begin
-      BasicAuthentication := true;
-      Username := credentials.username;
-      Password := credentials.password;
+      with _idHTTPRequest do
+      begin
+        BasicAuthentication := true;
+        Username := credentials.username;
+        Password := credentials.password;
+      end;
     end;
     HTTP_response := HTTP_post(url, paramList, _idHTTPRequest);
   finally
     FreeAndNil(_idHTTPRequest);
+  end;
+
+  Result := HTTP_response;
+end;
+
+function HTTP_post(url: string; bearerToken: string; body: string; responseFileName: string = EMPTY_STRING): string;
+var
+  HTTPResponse: string;
+
+  _idHTTPRequest: TIdHTTPRequest;
+begin
+
+  _idHTTPRequest := TIdHTTPRequest.Create(nil);
+  try
+    _idHTTPRequest.CustomHeaders.AddValue('Authorization', 'Bearer ' + bearerToken);
+    _idHTTPRequest.ContentType := 'application/json';
+
+    HTTPResponse := HTTP_post(url, body, _idHTTPRequest, responseFileName);
+  finally
+    FreeAndNil(_idHTTPRequest);
+  end;
+
+  Result := HTTPResponse;
+end;
+
+function HTTP_post(url: string; body: string; idHTTPRequest: TIdHTTPRequest = nil;
+  responseFileName: string = EMPTY_STRING): string;
+var
+  HTTP_response: string;
+
+  _HTTP: TMyIdHTTP;
+  _requestStream: TStringStream;
+  _responseStream: TStringStream;
+begin
+  _HTTP := TMyIdHTTP.Create(nil);
+  _responseStream := TStringStream.Create('', TEncoding.UTF8);
+  try
+    if Assigned(idHTTPRequest) then
+    begin
+      _HTTP.Request := idHTTPRequest;
+    end;
+
+    _requestStream := TStringStream.Create(body, TEncoding.UTF8);
+    try
+      _HTTP.Post(url, _requestStream, _responseStream);
+      HTTP_response := _responseStream.DataString;
+    finally
+      _requestStream.Free;
+    end;
+  finally
+    _HTTP.Free;
+    _responseStream.Free;
+  end;
+
+  if (responseFileName <> EMPTY_STRING) then
+  begin
+    saveToFile(HTTP_response, responseFileName);
   end;
 
   Result := HTTP_response;
@@ -228,6 +506,39 @@ begin
 
   try
     HTTP_response := _HTTP.Post(url, paramList);
+  finally
+    _HTTP.Free;
+  end;
+
+  Result := HTTP_response;
+end;
+
+function HTTP_delete(url: string; bearerToken: string): string;
+var
+  response: string;
+  _idHTTPRequest: TIdHTTPRequest;
+begin
+  _idHTTPRequest := TIdHTTPRequest.Create(nil);
+  _idHTTPRequest.CustomHeaders.Add('Authorization: Bearer ' + bearerToken);
+  response := HTTP_delete(url, _idHTTPRequest);
+
+  Result := response;
+end;
+
+function HTTP_delete(url: string; idHTTPRequest: TIdHTTPRequest = nil): string;
+var
+  HTTP_response: string;
+  _HTTP: TMyIdHTTP;
+begin
+  _HTTP := TMyIdHTTP.Create(nil);
+
+  if Assigned(idHTTPRequest) then
+  begin
+    _HTTP.Request := idHTTPRequest;
+  end;
+
+  try
+    HTTP_response := _HTTP.Delete(url);
   finally
     _HTTP.Free;
   end;

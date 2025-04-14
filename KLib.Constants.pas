@@ -42,6 +42,8 @@ uses
   KLib.Types;
 
 const
+  DECIMAL_FORMAT = '#0.00';
+
   DATE_FORMAT = 'yyyy-mm-dd';
   DATE_FORMAT_ITALIAN = 'dd/mm/yyyy';
   DATETIME_FORMAT = 'yyyy-mm-dd hh:nn:ss';
@@ -84,6 +86,10 @@ const
   C_DRIVE = 'C';
 
   APPLICATION_JSON_CONTENT_TYPE = 'application/json';
+
+  START_ZPL_CMD = '^XA';
+  END_ZPL_CMD = '^XZ';
+  RESET_ZPL_CMD = '^PON^LH0,0^FWN';
 
   RANDOM_STRING = '99~@(To4h7KeFSX|{T2M';
   SPACE_STRING = ' ';

@@ -62,7 +62,55 @@ type
   TFileSystemTimeType = (created, modified, accessed);
 
   TWindowsServiceStartupType = (_null, delayed_auto, auto, manual, disabled);
+
+  TEmailProvider = (custom, gmail, outlook);
+
+  TContentType = (text_plain, text_html);
 {$scopedenums OFF}
+
+  TOAuth2Response = record
+  public
+    access_token: string;
+    token_type: string;
+    [DefaultValueAttribute('0')]
+    expires_in: integer;
+    [DefaultValueAttribute(EMPTY_STRING)]
+    refresh_token: string;
+    [DefaultValueAttribute(EMPTY_STRING)]
+    scope: string;
+
+    procedure readFromFile(filename: string);
+    procedure saveToFile(filename: string);
+    function getAsString(): string;
+    procedure clear;
+  end;
+
+  TSMTPSettings = record
+    host: string;
+    port: Integer;
+    useTls: Boolean;
+    username: string;
+    password: string;
+    accessToken: string;
+    provider: TEmailProvider;
+
+    procedure clear;
+  end;
+
+  TEmailMessage = record
+    fromAddress: string;
+    toAddresses: TArray<string>;
+    ccAddresses: TArray<string>;
+    bccAddresses: TArray<string>;
+    subject: string;
+    body: string;
+    signature: string;
+    attachments: TArray<string>;
+
+    contentType: TContentType;
+
+    procedure clear;
+  end;
 
   THostPort = record
     host: string;
@@ -75,6 +123,7 @@ type
     username: string;
     password: string;
 
+    function isEmpty: Boolean;
     procedure clear;
   end;
 
@@ -124,8 +173,19 @@ type
   end;
 
   TSize = record
-    width: integer;
-    height: integer;
+    length: double;
+    width: double;
+    height: double;
+
+    function lengthAsInteger: integer;
+    function widthAsInteger: integer;
+    function heightAsInteger: integer;
+    procedure clear;
+  end;
+
+  TCodeDescription = record
+    description: string;
+    code: string;
 
     procedure clear;
   end;
@@ -191,6 +251,55 @@ type
 
 implementation
 
+uses
+
+  KLib.Utils, KLib.Generics.JSON, KLib.Constants;
+
+procedure TOAuth2Response.readFromFile(filename: string);
+var
+  _text: string;
+begin
+  _text := getTextFromFile(filename);
+  Self := TJSONGenerics.getParsedJSON<TOAuth2Response>(_text);
+end;
+
+procedure TOAuth2Response.saveToFile(filename: string);
+var
+  _text: string;
+begin
+  _text := getAsString();
+  KLib.Utils.saveToFile(_text, filename);
+end;
+
+function TOAuth2Response.getAsString(): string;
+begin
+  Result := TJSONGenerics.getJSONAsString<TOAuth2Response>(Self);
+end;
+
+procedure TOAuth2Response.clear();
+begin
+  access_token := EMPTY_STRING;
+  token_type := EMPTY_STRING;
+  expires_in := 0;
+  refresh_token := EMPTY_STRING;
+  scope := EMPTY_STRING;
+end;
+
+procedure TSMTPSettings.clear;
+const
+  EMPTY: TSMTPSettings = ();
+begin
+  Self := EMPTY;
+  Self.provider := TEmailProvider.custom;
+end;
+
+procedure TEmailMessage.clear;
+const
+  EMPTY: TEmailMessage = ();
+begin
+  Self := EMPTY;
+end;
+
 function TDateTimeRange.getAsString: string;
 var
   _startDataTimeAsString: string;
@@ -198,6 +307,7 @@ var
 begin
   _startDataTimeAsString := DateTimeToStr(self._start);
   _endDataTimeAsString := DateTimeToStr(self._end);
+
   Result := _startDataTimeAsString + ' - ' + _endDataTimeAsString;
 end;
 
@@ -206,6 +316,13 @@ const
   EMPTY: THostPort = ();
 begin
   Self := EMPTY;
+end;
+
+function TCredentials.isEmpty: boolean;
+const
+  EMPTY: TCredentials = ();
+begin
+  Result := (Self.username = '') and (Self.password = '');
 end;
 
 procedure TCredentials.clear;
@@ -250,9 +367,31 @@ begin
   Self := EMPTY;
 end;
 
+function TSize.lengthAsInteger: integer;
+begin
+  Result := trunc(length);
+end;
+
+function TSize.widthAsInteger: integer;
+begin
+  Result := trunc(width);
+end;
+
+function TSize.heightAsInteger: integer;
+begin
+  Result := trunc(height);
+end;
+
 procedure TSize.clear;
 const
   EMPTY: TSize = ();
+begin
+  Self := EMPTY;
+end;
+
+procedure TCodeDescription.clear;
+const
+  EMPTY: TCodeDescription = ();
 begin
   Self := EMPTY;
 end;

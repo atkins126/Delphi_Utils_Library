@@ -34,54 +34,69 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.MyIdHTTP;
+unit KLib.ZPLPrinter;
 
 interface
 
 uses
-  IdHttp, IdSSLOpenSSLHeaders, IdSSLOpenSSL, IdCTypes,
-  System.Classes;
+
+  KLib.Types;
 
 type
-  TMyIdHTTP = class(TIdHTTP)
+
+  TZPLPrinter = class
   private
-    procedure OnStatusInfoEx(ASender: TObject; const AsslSocket: PSSL; const AWhere, Aret: TIdC_INT; const AType, AMsg: String);
+    hostPort: THostPort;
   public
-    constructor Create(AOwner: TComponent);
-    destructor Destroy; override;
+    constructor create(hostPort: THostPort);
+
+    procedure printFromFile(filename: string);
+    procedure print(texts: TArray<string>); overload;
+    procedure print(text: string); overload;
+    procedure updateConfig(const hostPort: THostPort);
   end;
 
 implementation
 
-constructor TMyIdHTTP.Create(AOwner: TComponent);
+uses
+  KLib.Indy, KLib.Constants, KLib.Utils,
+  System.SysUtils;
+
+constructor TZPLPrinter.create(hostPort: THostPort);
 begin
-  inherited Create(AOwner);
-  IOHandler := TIdSSLIOHandlerSocketOpenSSL.Create(Self);
-  with IOHandler as TIdSSLIOHandlerSocketOpenSSL do
+  updateConfig(hostPort);
+end;
+
+procedure TZPLPrinter.printFromFile(filename: string);
+begin
+  TCPPrintFromFile(hostPort, filename);
+end;
+
+procedure TZPLPrinter.print(texts: TArray<string>);
+var
+  _text: string;
+  _textMod: string;
+begin
+  for _text in texts do
   begin
-    OnStatusInfoEx := Self.OnStatusInfoEx;
-    SSLOptions.Method := sslvSSLv23;
-    SSLOptions.SSLVersions := [
-      TIdSSLVersion.sslvTLSv1, TIdSSLVersion.sslvTLSv1_1, TIdSSLVersion.sslvTLSv1_2,
-      TIdSSLVersion.sslvSSLv2, TIdSSLVersion.sslvSSLv23,
-      TIdSSLVersion.sslvSSLv3];
+    _textMod := myStringReplace(_text, START_ZPL_CMD, EMPTY_STRING,
+      [rfReplaceAll]);
+    _textMod :=
+      START_ZPL_CMD + sLineBreak +
+      RESET_ZPL_CMD + sLineBreak +
+      _text;
+    print(_textMod);
   end;
-
-  HandleRedirects := true;
-
-  HTTPOptions := HTTPOptions + [hoNoProtocolErrorException, hoWantProtocolErrorContent];
 end;
 
-procedure TMyIdHTTP.OnStatusInfoEx(ASender: TObject; const AsslSocket: PSSL;
-  const AWhere, Aret: TIdC_INT; const AType, AMsg: String);
+procedure TZPLPrinter.print(text: string);
 begin
-  SSL_set_tlsext_host_name(AsslSocket, Request.Host);
+  TCPPrintText(hostPort, text);
 end;
 
-destructor TMyIdHTTP.Destroy;
+procedure TZPLPrinter.updateConfig(const hostPort: THostPort);
 begin
-  IOHandler.Free;
-  inherited;
+  Self.hostPort := hostPort;
 end;
 
 end.

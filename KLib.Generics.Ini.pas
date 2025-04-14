@@ -94,7 +94,7 @@ unit KLib.Generics.Ini;
 interface
 
 uses
-  KLib.Constants;
+  KLib.Constants, KLib.Types;
 
 type
   TIniGenerics = class
@@ -102,13 +102,18 @@ type
     class procedure saveToFile<T>(iniRecord: T; fileName: string = EMPTY_STRING; sectionName: string = 'default_section');
     class function tryGetFromFile<T>(fileName: string = EMPTY_STRING; sectionName: string = 'default_section'): T;
     class function getFromFile<T>(fileName: string = EMPTY_STRING; sectionName: string = 'default_section';
-      raiseException: boolean = RAISE_EXCEPTION): T;
+      isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): T;
+  end;
+
+  TTempJsonRecord = record
+    _arrayOfStrings: TArrayOfStrings;
   end;
 
 implementation
 
 uses
-  KLib.Generics.Attributes, KLib.Generics, KLib.IniFiles, KLib.Windows, KLib.Utils, KLib.Validate,
+  KLib.Generics.Attributes, KLib.Generics, KLib.Generics.JSON,
+  KLib.IniFiles, KLib.Windows, KLib.Utils, KLib.Validate,
   System.Rtti, System.SysUtils, System.Variants;
 
 class procedure TIniGenerics.saveToFile<T>(iniRecord: T; fileName: string = EMPTY_STRING; sectionName: string = 'default_section');
@@ -240,7 +245,7 @@ begin
 end;
 
 class function TIniGenerics.getFromFile<T>(fileName: string = EMPTY_STRING; sectionName: string = 'default_section';
-  raiseException: boolean = RAISE_EXCEPTION): T;
+  isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION): T;
 var
   _record: T;
 
@@ -260,6 +265,10 @@ var
   _rttiType: TRttiType;
   _customAttribute: TCustomAttribute;
   _rttiField: TRttiField;
+
+  _tempJSONRecord: TTempJsonRecord;
+
+  _newTValue: TValue;
 begin
   _record := TGenerics.getDefault<T>;
 
@@ -278,7 +287,7 @@ begin
       _fileName := FileNameAttribute(_customAttribute).value;
     end;
 
-    if _customAttribute is SettingStringsAttribute then
+    if (_customAttribute is SettingStringsAttribute) then
     begin
       _settingStringsAttribute := SettingStringsAttribute(_customAttribute).value;
     end;
@@ -286,7 +295,7 @@ begin
 
   _fileExists := checkIfFileExists(_fileName);
 
-  if _fileExists then
+  if (_fileExists) then
   begin
     for _rttiField in _rttiType.GetFields do
     begin
@@ -357,7 +366,7 @@ begin
             begin
               _propertyValue := false;
             end
-            else if raiseException then
+            else if isRaiseExceptionEnabled then
             begin
               raise Exception.Create('Incorrect value -> filename: ' + _fileName + ' section name: ' + _sectionName +
                 ' property name: ' + _propertyName + ' property value: ' + _propertyValue);
@@ -374,9 +383,20 @@ begin
           end;
         end;
 
-        if (not VarIsEmpty(_propertyValue)) then
+        if ((not VarIsEmpty(_propertyValue)) and
+          (_rttiField.FieldType.TypeKind <> tkDynArray)) then
         begin
           _rttiField.SetValue(@_record, TValue.FromVariant(_propertyValue));
+        end;
+
+        if (_rttiField.FieldType.TypeKind = tkDynArray) then
+        begin
+          _tempJSONRecord := TJSONGenerics.getParsedJSON<TTempJsonRecord>(
+            '{"_arrayOfStrings":' + _propertyValue + '}');
+
+          TValue.Make(@_tempJSONRecord._arrayOfStrings, TypeInfo(TArrayOfStrings),
+            _newTValue);
+          _rttiField.SetValue(@_record, _newTValue);
         end;
       except
         on E: Exception do
@@ -389,7 +409,7 @@ begin
 
   _rttiContext.Free;
 
-  if (raiseException) and (not _fileExists) then
+  if (isRaiseExceptionEnabled) and (not _fileExists) then
   begin
     validateThatFileExists(_fileName);
   end;

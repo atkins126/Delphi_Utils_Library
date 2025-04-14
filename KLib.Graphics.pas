@@ -40,6 +40,7 @@ interface
 
 uses
   KLib.Types, KLib.Constants,
+  RzDBCmbo,
   Vcl.Graphics, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Controls, Vcl.Dialogs, Vcl.Forms,
   System.Classes;
 
@@ -99,7 +100,8 @@ procedure setDarkerTColorToTPanel(component: TPanel; color: TColor; levelLighter
 function getLighterTColor(color: TColor; levelLighter: integer = 1): TColor;
 function getDarkerTColor(color: TColor; levelDarker: integer = 1): TColor;
 procedure setTColorToTPanel(component: TPanel; color: TColor);
-procedure makePanelVisibleOnlyIfStringIsNotNull(myPanel: TPanel; myString: String);
+procedure makePanelVisibleOnlyIfStringIsNotNull(myPanel: TPanel; value: string);
+procedure setFormInCenterOfScreen(form: TForm);
 procedure setComponentInMiddlePosition(control: TControl);
 
 procedure loadImgFileToTImage(img: TImage; pathImgFile: string); //todo keep version with devexpress and see the differences
@@ -108,6 +110,8 @@ procedure loadImgFileToTImage(img: TImage; pathImgFile: string); //todo keep ver
 function getImageAsAnsiString(fileName: string): AnsiString;
 
 function myOpenDialog(initialDir: string = EMPTY_STRING; filter: string = 'All |*.*'): string;
+function mySaveDialog(initialDir: string = EMPTY_STRING;
+  fileName: string = EMPTY_STRING; filter: string = 'All |*.*'): string;
 
 procedure myShowMessage(msg: string; title: string = ''; confirmValue: string = 'ok');
 function confirmMessage(msg: string; title: string = ''; yesValue: string = 'yes'; noValue: string = 'no'): boolean;
@@ -127,6 +131,8 @@ function getWidthOfCaption(numberOfCharacters: integer; myFont: TFont): integer;
 
 function getHeightOfCaption(text: string; font: TFont; width: integer): integer;
 function getHeightOfSingleCharacter(myFont: TFont): integer;
+
+procedure setDBComboBox(control: TRzDBComboBox; codeDescriptions: TArray<TCodeDescription>);
 
 implementation
 
@@ -289,10 +295,10 @@ var
   _componentPositionInScreenCoordinates: TPoint;
 begin
   _componentPositionInScreenCoordinates := component.ClientToScreen(Point(0, 0));
-  self.position.top := _componentPositionInScreenCoordinates.Y;
-  self.position.left := _componentPositionInScreenCoordinates.X;
-  self.position.bottom := _componentPositionInScreenCoordinates.Y + self.size.height;
-  self.position.right := _componentPositionInScreenCoordinates.X + self.size.width;
+  Self.position.top := _componentPositionInScreenCoordinates.Y;
+  Self.position.left := _componentPositionInScreenCoordinates.X;
+  Self.position.bottom := _componentPositionInScreenCoordinates.Y + Self.size.heightAsInteger;
+  Self.position.right := _componentPositionInScreenCoordinates.X + Self.size.widthAsInteger;
 end;
 
 function TColorToString(color: TColor): string;
@@ -418,9 +424,9 @@ begin
   component.Color := color;
 end;
 
-procedure makePanelVisibleOnlyIfStringIsNotNull(myPanel: TPanel; myString: String);
+procedure makePanelVisibleOnlyIfStringIsNotNull(myPanel: TPanel; value: string);
 begin
-  if myString <> '' then
+  if value <> '' then
   begin
     myPanel.Visible := true;
   end
@@ -428,6 +434,12 @@ begin
   begin
     myPanel.Visible := false;
   end;
+end;
+
+procedure setFormInCenterOfScreen(form: TForm);
+begin
+  form.Left := (form.Monitor.Width - form.Width) div 2;
+  form.Top := (form.Monitor.Height - form.Height) div 2;
 end;
 
 procedure setComponentInMiddlePosition(control: TControl);
@@ -501,10 +513,51 @@ begin
     _opendialog.Options := [ofFileMustExist];
     _opendialog.Filter := filter;
     _opendialog.FilterIndex := 1;
-    _opendialog.execute;
-    _result := _opendialog.FileName;
+    if (_opendialog.execute) then
+    begin
+      _result := _opendialog.FileName;
+    end
+    else
+    begin
+      _result := EMPTY_STRING;
+    end;
   finally
     FreeAndNil(_opendialog)
+  end;
+
+  Result := _result;
+end;
+
+function mySaveDialog(initialDir: string = EMPTY_STRING;
+  fileName: string = EMPTY_STRING; filter: string = 'All |*.*'): string;
+var
+  _result: string;
+
+  _saveDialog: TSaveDialog;
+  _initialDir: string;
+begin
+  _initialDir := getValidFullPath(initialDir);
+  if (_initialDir = EMPTY_STRING) then
+  begin
+    _initialDir := GetCurrentDir;
+  end;
+
+  _saveDialog := TSaveDialog.Create(nil);
+  try
+    _saveDialog.InitialDir := _initialDir;
+    _saveDialog.Filter := filter;
+    _saveDialog.FilterIndex := 1;
+    _saveDialog.FileName := fileName;
+    if (_saveDialog.execute) then
+    begin
+      _result := _saveDialog.FileName;
+    end
+    else
+    begin
+      _result := EMPTY_STRING;
+    end;
+  finally
+    FreeAndNil(_saveDialog)
   end;
 
   Result := _result;
@@ -753,9 +806,10 @@ end;
 
 function getHeightOfSingleCharacter(myFont: TFont): integer;
 var
+  height: integer;
+
   _label: TLabel;
   _text: string;
-  _height: integer;
 begin
   _text := 'A';
   _label := TLabel.Create(nil);
@@ -765,9 +819,21 @@ begin
     Font := myFont;
     Caption := _text;
   end;
-  _height := _label.Height;
+  height := _label.Height;
   FreeAndNil(_label);
-  Result := _height;
+
+  Result := height;
+end;
+
+procedure setDBComboBox(control: TRzDBComboBox; codeDescriptions: TArray<TCodeDescription>);
+var
+  _codeDescription: TCodeDescription;
+begin
+  control.ClearItemsValues;
+  for _codeDescription in codeDescriptions do
+  begin
+    control.AddItemValue(_codeDescription.description, _codeDescription.code);
+  end;
 end;
 
 end.

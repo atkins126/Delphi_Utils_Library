@@ -178,8 +178,8 @@ function getLastSysErrorMessage: string;
 
 function getLocaleDecimalSeparator: char;
 
-procedure terminateCurrentProcess(exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
-procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+procedure terminateCurrentProcess(exitCode: Cardinal = 0; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 
 //###########-----NOT WORK ON WINDOWS XP, WINDOWS SERVER 2003, AND EARLIER VERSIONS OF THE WINDOWS OPERATING SYSTEM------------############
 function checkIfCurrentProcessIsAServiceProcess: boolean;
@@ -1243,12 +1243,17 @@ var
   _posEnd: integer;
   _valueToReplace: string;
   _newValue: string;
+  _exit: boolean;
 begin
+  _exit := false;
   _stringPos := source;
   _stringDir := source;
   stringWithEnvVariablesReaded := source;
-  repeat
+  while (not _exit) do
+  begin
     _posStart := pos('%', _stringPos);
+    _exit := (_posStart = 0);
+
     _stringPos := copy(_stringPos, _posStart + 1, length(_stringPos));
     _posEnd := _posStart + pos('%', _stringPos);
     if (_posStart > 0) and (_posEnd > 1) then
@@ -1262,11 +1267,11 @@ begin
     end
     else
     begin
-      exit;
+      _exit := true;
     end;
     _stringDir := copy(_stringDir, _posEnd + 1, length(_stringDir));
     _stringPos := _stringDir;
-  until _posStart < 0;
+  end;
 
   Result := stringWithEnvVariablesReaded;
 end;
@@ -1797,20 +1802,20 @@ begin
   Result := decimalSeparator;
 end;
 
-procedure terminateCurrentProcess(exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+procedure terminateCurrentProcess(exitCode: Cardinal = 0; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _currentProcess: THandle;
 begin
   _currentProcess := GetCurrentProcess;
-  myTerminateProcess(_currentProcess, exitCode, raiseExceptionEnabled);
+  myTerminateProcess(_currentProcess, exitCode, isRaiseExceptionEnabled);
 end;
 
-procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; raiseExceptionEnabled: boolean = RAISE_EXCEPTION);
+procedure myTerminateProcess(processHandle: THandle; exitCode: Cardinal = 0; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION);
 var
   _success: LongBool;
 begin
   _success := TerminateProcess(processHandle, exitCode);
-  if not _success and raiseExceptionEnabled then
+  if not _success and isRaiseExceptionEnabled then
   begin
     raiseLastSysErrorMessage;
   end;

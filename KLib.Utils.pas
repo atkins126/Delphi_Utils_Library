@@ -41,7 +41,7 @@ interface
 uses
   KLib.Types, KLib.Constants, KLib.MyThread,
   Vcl.Imaging.pngimage,
-  System.SysUtils, System.Classes;
+  System.SysUtils, System.Classes, System.Rtti, System.JSON, System.TypInfo;
 
 procedure deleteFilesInDir(pathDir: string; const filesToKeep: array of string);
 procedure deleteFilesInDirWithStartingFileName(dirName: string; startingFileName: string; fileType: string = EMPTY_STRING);
@@ -76,13 +76,16 @@ function getTempfolderPath: string;
 
 function getParentDir(source: string): string;
 
-function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): string;
-function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TStringList;
+function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true; startingFileName: string = EMPTY_STRING): string;
+function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true; startingFileName: string = EMPTY_STRING): TStringList;
 
-procedure appendToFileInNewLine(filename: string; text: string; forceCreationFile: boolean = NOT_FORCE); overload;
-procedure appendToFile(filename: string; text: string; forceCreationFile: boolean = NOT_FORCE;
+procedure appendToFileInNewLine(fileName: string; text: string; forceCreationFile: boolean = NOT_FORCE); overload;
+procedure appendToFile(fileName: string; text: string; forceCreationFile: boolean = NOT_FORCE;
   forceAppendInNewLine: boolean = NOT_FORCE); overload;
-procedure saveToFile(source: string; fileName: string);
+procedure saveBase64ToFile(text: string; fileName: string);
+procedure saveToFile(text: string; fileName: string); overload;
+procedure saveToFile(text: string; fileName: string; encoding: TEncoding;
+  forceOverwrite: boolean = FORCE_OVERWRITE); overload;
 
 function checkMD5File(fileName: string; MD5: string): boolean;
 
@@ -97,6 +100,12 @@ function getResourceAsStream(resource: TResource): TResourceStream;
 procedure unzip(zipFileName: string; destinationDir: string; deleteZipAfterUnzip: boolean = false);
 
 function checkRequiredFTPProperties(FTPCredentials: TFTPCredentials): boolean;
+
+function splitByMonths(startDate: TDateTime; endDate: TDateTime): TArray<TDateTimeRange>; overload;
+function splitByMonths(datetimeRange: TDateTimeRange): TArray<TDateTimeRange>; overload;
+
+function divideDateRange(startDate: TDateTime; endDate: TDateTime; divisions: integer = 2): TArray<TDateTimeRange>; overload;
+function divideDateRange(datetimeRange: TDateTimeRange; divisions: integer = 2): TArray<TDateTimeRange>; overload;
 
 function getValidItalianTelephoneNumber(number: string): string;
 function getValidTelephoneNumber(number: string): string;
@@ -114,22 +123,27 @@ function getCurrentDateTimeWithFormattingAsString(formatting: string = DATE_FORM
 function getDateTimeWithFormattingAsString(value: TDateTime; formatting: string = DATE_FORMAT): string;
 function getCurrentDateTime: TDateTime;
 
+function getZPLWithTextInsertedAtEOF(zpl: string; extraText: string): string;
 function getEscapedMySQLString(mainString: string): string;
+function getHTTPGetEncodedUrl(url: string; paramList: TStringList): string;
 function getEscapedHTMLString(mainString: string): string;
 function getEscapedXMLString(mainString: string): string;
 function getEscapedJSONString(mainString: string): string;
 function getDoubleQuotedString(mainString: string): string;
 function getSingleQuotedString(mainString: string): string;
 function getQuotedString(mainString: string; quoteCharacter: Char): string;
-function getDoubleQuoteExtractedString(mainString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
-function getSingleQuoteExtractedString(mainString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
-function getExtractedString(mainString: string; quoteString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
+function getDoubleQuoteExtractedString(mainString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
+function getSingleQuoteExtractedString(mainString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
+function getExtractedString(mainString: string; quoteString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
 function getDequotedString(mainString: string): string;
 function getMainStringWithSubStringInserted(mainString: string; insertedString: string; index: integer;
   forceOverwriteIndexCharacter: boolean = NOT_FORCE_OVERWRITE): string;
 function getStringWithoutLineBreaks(mainString: string; substituteString: string = SPACE_STRING): string;
 function getStringWithFixedLength(value: string; fixedLength: integer): string;
 function getStringFromStream(stream: TStream): string;
+
+function getCleanJSONString(const JSONStr: string): string;
+function getCleanJSON(JsonValue: TJSONValue): TJSONValue;
 
 function getCSVFieldFromStringAsDate(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): TDate; overload;
 function getCSVFieldFromStringAsDate(mainString: string; index: integer; formatSettings: TFormatSettings; delimiter: Char = SEMICOLON_DELIMITER): TDate; overload;
@@ -147,6 +161,8 @@ function stringToVariantType(stringValue: string; destinationTypeAsString: strin
 
 function arrayOfStringToTStringList(arrayOfStrings: array of string): TStringList;
 function arrayOfVariantToTStringList(arrayOfVariant: Variant): TStringList;
+
+function splitStringsAsTArrayStrings(source: string; chunkSize: Integer): TArray<string>;
 
 procedure splitStrings(source: string; delimiter: string; var destFirstString: string; var destSecondString: string); overload;
 procedure splitStrings(source: string; delimiterPosition: integer; delimiterLength: integer; var destFirstString: string; var destSecondString: string); overload;
@@ -168,6 +184,8 @@ function getFloatToStrDecimalSeparator: char;
 
 function get_status_asString(status: TStatus): string;
 
+function getSchemaOfType(AType: PTypeInfo): string;
+
 procedure restartMyThread(var myThread: TMyThread);
 
 //TODO refactor
@@ -179,9 +197,9 @@ function getWordWithBitSetted(const sourceValue: Cardinal; const bitIndex: Byte;
 function getArrayOfAnonymousMethodsFromArrayOfMethods(_methods: KLib.Types.TArrayOfMethods): KLib.Types.TArrayOfAnonymousMethods;
 function getAnonymousMethodsFromMethod(_method: KLib.Types.TMethod): KLib.Types.TAnonymousMethod;
 
-procedure tryToExecuteProcedure(myProcedure: TAnonymousMethod; raiseExceptionEnabled: boolean = false); overload;
-procedure tryToExecuteProcedure(myProcedure: TCallBack; raiseExceptionEnabled: boolean = false); overload;
-procedure tryToExecuteProcedure(myProcedure: TProcedure; raiseExceptionEnabled: boolean = false); overload;
+procedure tryToExecuteProcedure(myProcedure: TAnonymousMethod; isRaiseExceptionEnabled: boolean = false); overload;
+procedure tryToExecuteProcedure(myProcedure: TCallBack; isRaiseExceptionEnabled: boolean = false); overload;
+procedure tryToExecuteProcedure(myProcedure: TProcedure; isRaiseExceptionEnabled: boolean = false); overload;
 procedure executeProcedure(myProcedure: TAnonymousMethod); overload;
 procedure executeProcedure(myProcedure: TCallBack); overload;
 
@@ -189,12 +207,21 @@ function checkIfVariantTypeIsEmpty(value: Variant; typeAsString: string): boolea
 function checkIfIsEmptyOrNull(value: Variant): boolean;
 function myDefault(typeAsString: string): Variant;
 
+function getResizedTValue(value: TValue; maxLengtH: double): TValue;
+function getDefaultTValue(AType: TRttiType): TValue;
+
+function checkIfTValueIsEmpty(const AValue: TValue): Boolean;
+
+function myIsDebuggerPresent: boolean;
+
 implementation
 
 uses
   KLib.Validate, KLib.Indy, KLib.FileSearchReplacer, KLib.Math,
   Vcl.ExtCtrls,
-  System.Zip, System.IOUtils, System.StrUtils, System.Character, System.RegularExpressions, System.Variants;
+  System.Zip, System.IOUtils, System.StrUtils, System.Character,
+  System.RegularExpressions, System.Generics.Collections,
+  System.Variants, System.NetEncoding, System.DateUtils;
 
 procedure deleteFilesInDir(pathDir: string; const filesToKeep: array of string);
 var
@@ -221,30 +248,23 @@ begin
 end;
 
 procedure deleteFilesInDirWithStartingFileName(dirName: string; startingFileName: string; fileType: string = EMPTY_STRING);
-const
-  IGNORE_CASE = true;
 var
   _files: TStringList;
   _file: string;
-  _fileName: string;
 begin
-  _files := getFileNamesListInDir(dirName, fileType);
+  _files := getFileNamesListInDir(dirName, fileType, true, startingFileName);
   for _file in _files do
   begin
-    _fileName := ExtractFileName(_file);
-    if _fileName.StartsWith(startingFileName, IGNORE_CASE) then
-    begin
-      deleteFileIfExists(_file);
-    end;
+    deleteFileIfExists(_file);
   end;
   FreeAndNil(_files);
 end;
 
-procedure createEmptyFileIfNotExists(filename: string);
+procedure createEmptyFileIfNotExists(fileName: string);
 begin
-  if not checkIfFileExists(filename) then
+  if not checkIfFileExists(fileName) then
   begin
-    createEmptyFile(filename);
+    createEmptyFile(fileName);
   end;
 end;
 {$hints OFF}
@@ -479,9 +499,13 @@ const
 begin
   if not checkIfDirExists(dirName) then
   begin
-    if not CreateDir(dirName) then
-    begin
-      raise Exception.Create(ERR_MSG);
+    try
+      ForceDirectories(dirName);
+    except
+      on E: Exception do
+      begin
+        raise Exception.Create(ERR_MSG);
+      end;
     end;
   end;
 end;
@@ -581,7 +605,8 @@ begin
   Result := parentDir;
 end;
 
-function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): string;
+function getFirstFileNameInDir(dirName: string; fileType: string = EMPTY_STRING;
+  fullPath: boolean = true; startingFileName: string = EMPTY_STRING): string;
 const
   ERR_MSG = 'No files found.';
 var
@@ -589,7 +614,7 @@ var
 
   _fileNamesList: TStringList;
 begin
-  _fileNamesList := getFileNamesListInDir(dirName, fileType, fullPath);
+  _fileNamesList := getFileNamesListInDir(dirName, fileType, fullPath, startingFileName);
   if _fileNamesList.Count > 0 then
   begin
     fileName := _fileNamesList[0];
@@ -607,7 +632,8 @@ begin
   Result := fileName;
 end;
 
-function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING; fullPath: boolean = true): TStringList;
+function getFileNamesListInDir(dirName: string; fileType: string = EMPTY_STRING;
+  fullPath: boolean = true; startingFilename: string = EMPTY_STRING): TStringList;
 var
   fileNamesList: TStringList;
 
@@ -619,13 +645,14 @@ var
   _errorMsg: string;
 begin
   fileNamesList := TStringList.Create;
-  _mask := getCombinedPath(dirName, '*');
+  _mask := getCombinedPath(dirName, startingFileName + '*');
   if fileType <> EMPTY_STRING then
   begin
     _mask := _mask + '.' + fileType;
   end;
   _returnCode := FindFirst(_mask, faAnyFile - faDirectory, _searchRec);
-  if (_returnCode <> 0) and (_returnCode <> 2) then
+  if ((_returnCode <> 0) AND (_returnCode <> 2) AND (_returnCode <> 18))
+  then
   begin
     _errorMsg := dirName + ' : ' + SysErrorMessage(_returnCode);
     raise Exception.Create(_errorMsg);
@@ -645,22 +672,22 @@ begin
   Result := fileNamesList;
 end;
 
-procedure appendToFileInNewLine(filename: string; text: string; forceCreationFile: boolean = NOT_FORCE);
+procedure appendToFileInNewLine(fileName: string; text: string; forceCreationFile: boolean = NOT_FORCE);
 begin
   appendToFile(fileName, text, forceCreationFile, FORCE);
 end;
 
-procedure appendToFile(filename: string; text: string; forceCreationFile: boolean = NOT_FORCE;
+procedure appendToFile(fileName: string; text: string; forceCreationFile: boolean = NOT_FORCE;
   forceAppendInNewLine: boolean = NOT_FORCE);
 var
   _text: string;
 begin
   if forceCreationFile then
   begin
-    createEmptyFileIfNotExists(filename);
+    createEmptyFileIfNotExists(fileName);
   end;
   _text := text;
-  if (checkIfFileExistsAndIsNotEmpty(filename)) then
+  if (checkIfFileExistsAndIsNotEmpty(fileName)) then
   begin
     if (forceAppendInNewLine) then
     begin
@@ -668,16 +695,43 @@ begin
     end;
   end;
 
-  TFile.AppendAllText(filename, _text);
+  TFile.AppendAllText(fileName, _text);
 end;
 
-procedure saveToFile(source: string; fileName: string);
+procedure saveBase64ToFile(text: string; fileName: string);
+var
+  _bytes: TBytes;
+  _stream: TBytesStream;
+begin
+  _bytes := TNetEncoding.Base64.DecodeStringToBytes(text);
+  _stream := TBytesStream.Create(_bytes);
+  try
+    _stream.SaveToFile(fileName);
+  finally
+    _stream.Free;
+  end;
+end;
+
+procedure saveToFile(text: string; fileName: string);
+begin
+  saveToFile(text, fileName, TEncoding.UTF8);
+end;
+
+procedure saveToFile(text: string; fileName: string; encoding: TEncoding;
+  forceOverwrite: boolean = FORCE_OVERWRITE);
 var
   _stringList: TStringList;
+  _parentDir: string;
 begin
+  _parentDir := getParentDir(fileName);
+  createDirIfNotExists(_parentDir);
   try
-    _stringList := stringToTStringList(source);
-    _stringList.SaveToFile(fileName);
+    if (forceOverwrite) then
+    begin
+      deleteFileIfExists(fileName);
+    end;
+    _stringList := stringToTStringList(text);
+    _stringList.SaveToFile(fileName, encoding);
   finally
     FreeAndNil(_stringList);
   end;
@@ -838,6 +892,124 @@ begin
   end;
 
   Result := _result;
+end;
+
+function splitByMonths(startDate: TDateTime; endDate: TDateTime): TArray<TDateTimeRange>;
+var
+  _datetimeRange: TDateTimeRange;
+begin
+  _datetimeRange.clear;
+  _datetimeRange._start := startDate;
+  _datetimeRange._end := endDate;
+
+  Result := splitByMonths(_datetimeRange);
+end;
+
+function splitByMonths(datetimeRange: TDateTimeRange): TArray<TDateTimeRange>;
+var
+  dateRanges: TArray<TDateTimeRange>;
+  range: TDateTimeRange;
+  currentStart: TDateTime;
+  currentEnd: TDateTime;
+  year, month, day: Word;
+begin
+  if datetimeRange._start > datetimeRange._end then
+    raise Exception.Create('The start date must be earlier than the end date.');
+
+  currentStart := datetimeRange._start;
+
+  while currentStart <= datetimeRange._end do
+  begin
+    range.clear;
+
+    // Decode the current start date
+    DecodeDate(currentStart, year, month, day);
+
+    // Calculate the end of the current month
+    currentEnd := EncodeDate(year, month, DaysInAMonth(year, month));
+
+    // Ensure the current end does not exceed the provided range
+    if currentEnd > datetimeRange._end then
+      currentEnd := datetimeRange._end;
+
+    // Assign the range
+    range._start := currentStart;
+    range._end := currentEnd;
+
+    // Add the range to the array
+    SetLength(dateRanges, Length(dateRanges) + 1);
+    dateRanges[High(dateRanges)] := range;
+
+    // Move to the next month
+    currentStart := currentEnd + 1;
+  end;
+
+  Result := dateRanges;
+end;
+
+function divideDateRange(startDate: TDateTime; endDate: TDateTime; divisions: Integer = 2): TArray<TDateTimeRange>;
+var
+  _datetimeRange: TDateTimeRange;
+begin
+  _datetimeRange.clear;
+  _datetimeRange._start := startDate;
+  _datetimeRange._end := endDate;
+
+  Result := divideDateRange(_datetimeRange, divisions);
+end;
+
+function divideDateRange(datetimeRange: TDateTimeRange; divisions: Integer = 2): TArray<TDateTimeRange>;
+var
+  dateRanges: TArray<TDateTimeRange>;
+
+  i: Integer;
+  interval: TDateTime;
+  currentStart: TDateTime;
+  range: TDateTimeRange;
+begin
+  if (datetimeRange._start > datetimeRange._end) then
+  begin
+    raise Exception.Create('The start date must be earlier than the end date.');
+  end;
+
+  if (divisions <= 0) then
+  begin
+    raise Exception.Create('The number of divisions must be greater than 0.');
+  end;
+
+  if (divisions > Trunc(datetimeRange._end - datetimeRange._start) + 1) then
+  begin
+    raise Exception.Create('The number of divisions exceeds the number of days in the range.');
+  end;
+  // Calculate the interval for each division
+  interval := (datetimeRange._end - datetimeRange._start) / divisions;
+
+  // Initialize the result array
+  SetLength(dateRanges, divisions);
+
+  // Create each range
+  currentStart := datetimeRange._start;
+  for i := 0 to divisions - 1 do
+  begin
+    range.clear;
+
+    range._start := currentStart;
+
+    if (i = (divisions - 1)) then
+    begin
+      range._end := datetimeRange._end; // Ensure the last range ends exactly at endDate
+    end
+    else
+    begin
+      range._end := Trunc(currentStart + interval);
+    end;
+
+    dateRanges[i] := range;
+
+    currentStart := range._end + 1; // Start the next range the day after the current end
+  end;
+
+  Result := dateRanges;
 end;
 
 function getValidItalianTelephoneNumber(number: string): string;
@@ -1025,6 +1197,18 @@ begin
   Result := Now;
 end;
 
+function getZPLWithTextInsertedAtEOF(zpl: string; extraText: string): string;
+var
+  _zpl: string;
+  _indexLastPositionZPL: integer;
+begin
+  _indexLastPositionZPL := AnsiPos(END_ZPL_CMD, zpl) - 1;
+  _ZPL := getMainStringWithSubStringInserted(zpl,
+    extraText, _indexLastPositionZPL);
+
+  Result := _zpl;
+end;
+
 function getEscapedMySQLString(mainString: string): string;
 begin
   Result := myStringReplace(mainString,
@@ -1033,9 +1217,24 @@ begin
     [rfReplaceAll]);
 end;
 
+function getHTTPGetEncodedUrl(url: string; paramList: TStringList): string;
+var
+  _param: string;
+  _encodedUrl: string;
+begin
+  _encodedUrl := url + '?';
+  for _param in paramList do
+  begin
+    _encodedUrl := _encodedUrl + '&' + _param;
+  end;
+  _encodedUrl := myStringReplace(_encodedUrl, '?&', '?', [rfReplaceAll]);
+
+  Result := _encodedUrl;
+end;
+
 function getEscapedHTMLString(mainString: string): string;
 begin
-  Result := getEscapedXMLString(mainString); //is the same?
+  Result := TNetEncoding.URL.Encode(mainString);
 end;
 
 function getEscapedXMLString(mainString: string): string;
@@ -1131,45 +1330,45 @@ begin
   Result := AnsiQuotedStr(mainString, quoteCharacter);
 end;
 
-function getDoubleQuoteExtractedString(mainString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
+function getDoubleQuoteExtractedString(mainString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
 begin
-  Result := getExtractedString(mainString, '"', raiseExceptionEnabled);
+  Result := getExtractedString(mainString, '"', isRaiseExceptionEnabled);
 end;
 
-function getSingleQuoteExtractedString(mainString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
+function getSingleQuoteExtractedString(mainString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
 begin
-  Result := getExtractedString(mainString, '''', raiseExceptionEnabled);
+  Result := getExtractedString(mainString, '''', isRaiseExceptionEnabled);
 end;
 
-function getExtractedString(mainString: string; quoteString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
+function getExtractedString(mainString: string; quoteString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED): string;
 const
   ERR_MSG = 'String not found.';
 var
   extractedString: string;
 
-  _lenghtQuotedString: integer;
-  _lenghtMainString: integer;
+  _lengthQuotedString: integer;
+  _lengthMainString: integer;
   _firstIndex: integer;
   _lastIndex: integer;
 begin
   extractedString := EMPTY_STRING;
 
-  _lenghtQuotedString := quoteString.Length;
+  _lengthQuotedString := quoteString.Length;
   _firstIndex := mainString.IndexOf(quoteString);
   if _firstIndex > -1 then
   begin
-    _firstIndex := _firstIndex + _lenghtQuotedString;
+    _firstIndex := _firstIndex + _lengthQuotedString;
 
-    _lenghtMainString := Length(mainString);
-    _lastIndex := mainString.LastIndexOf(quoteString, _lenghtMainString, _lenghtMainString - _firstIndex); //IGNORE FIRST OCCURENCE
+    _lengthMainString := Length(mainString);
+    _lastIndex := mainString.LastIndexOf(quoteString, _lengthMainString, _lengthMainString - _firstIndex); //IGNORE FIRST OCCURENCE
     if _lastIndex > -1 then
     begin
-      _lastIndex := _lastIndex - _lenghtQuotedString;
-      extractedString := mainString.Substring(_lenghtQuotedString, _lastIndex);
+      _lastIndex := _lastIndex - _lengthQuotedString;
+      extractedString := mainString.Substring(_lengthQuotedString, _lastIndex);
     end;
   end;
 
-  if (raiseExceptionEnabled) and (extractedString = EMPTY_STRING) then
+  if (isRaiseExceptionEnabled) and (extractedString = EMPTY_STRING) then
   begin
     raise Exception.Create(ERR_MSG);
   end;
@@ -1198,12 +1397,12 @@ const
 var
   mainStringWithSubStringInserted: string;
 
-  _lenght: integer;
+  _length: integer;
   _firstStringPart: string;
   _lastStringPart: string;
 begin
-  _lenght := Length(mainString);
-  if (index > _lenght) or (index < 0) then
+  _length := Length(mainString);
+  if (index > _length) or (index < 0) then
   begin
     raise Exception.Create(ERR_MSG);
   end;
@@ -1253,6 +1452,84 @@ begin
   end;
 
   Result := _string
+end;
+
+function getCleanJSONString(const JSONStr: string): string;
+var
+  JsonValue, CleanedJson: TJSONValue;
+begin
+  JsonValue := TJSONObject.ParseJSONValue(JSONStr);
+  if Assigned(JsonValue) then
+    try
+      CleanedJson := getCleanJSON(JsonValue);
+      try
+        Result := CleanedJson.ToJSON;
+      finally
+        CleanedJson.Free;
+      end;
+    finally
+      JsonValue.Free;
+    end
+  else
+    Result := '{}';
+end;
+
+function getCleanJSON(JsonValue: TJSONValue): TJSONValue;
+var
+  JSONObject: TJSONObject;
+  JSONArray: TJSONArray;
+  Pair: TJSONPair;
+  NewObject: TJSONObject;
+  NewArray: TJSONArray;
+  Item: TJSONValue;
+  i: Integer;
+begin
+  if JsonValue is TJSONObject then
+  begin
+    JSONObject := TJSONObject(JsonValue);
+    NewObject := TJSONObject.Create;
+    try
+      for Pair in JSONObject do
+      begin
+        Pair.JsonValue := getCleanJSON(Pair.JsonValue);
+        if not(Pair.JsonValue is TJSONString and (Pair.JsonValue.Value = '')) and
+          not(Pair.JsonValue is TJSONObject and (TJSONObject(Pair.JsonValue).Count = 0)) and
+          not(Pair.JsonValue is TJSONArray and (TJSONArray(Pair.JsonValue).Count = 0)) then
+        begin
+          NewObject.AddPair(Pair.JsonString.Value, Pair.JsonValue.Clone as TJSONValue);
+        end;
+      end;
+      Result := NewObject;
+    except
+      NewObject.Free;
+      raise;
+    end;
+  end
+  else if JsonValue is TJSONArray then
+  begin
+    JSONArray := TJSONArray(JsonValue);
+    NewArray := TJSONArray.Create;
+    try
+      for i := 0 to JSONArray.Count - 1 do
+      begin
+        Item := getCleanJSON(JSONArray.Items[i]);
+        if not(Item is TJSONString and (Item.Value = '')) and
+          not(Item is TJSONObject and (TJSONObject(Item).Count = 0)) and
+          not(Item is TJSONArray and (TJSONArray(Item).Count = 0)) then
+        begin
+          NewArray.AddElement(Item.Clone as TJSONValue);
+        end;
+      end;
+      Result := NewArray;
+    except
+      NewArray.Free;
+      raise;
+    end;
+  end
+  else
+  begin
+    Result := JsonValue.Clone as TJSONValue;
+  end;
 end;
 
 function getCSVFieldFromStringAsDate(mainString: string; index: integer; delimiter: Char = SEMICOLON_DELIMITER): TDate;
@@ -1476,6 +1753,18 @@ begin
   Result := fieldStringList;
 end;
 
+function splitStringsAsTArrayStrings(source: string; chunkSize: Integer): TArray<string>;
+var
+  i, len, count: Integer;
+begin
+  len := Length(source);
+  count := (len + chunkSize - 1) div chunkSize;
+  SetLength(Result, count);
+
+  for i := 0 to count - 1 do
+    Result[i] := Copy(source, i * chunkSize + 1, chunkSize);
+end;
+
 procedure splitStrings(source: string; delimiter: string; var destFirstString: string; var destSecondString: string);
 var
   _delimiterPosition: integer;
@@ -1488,17 +1777,17 @@ end;
 
 procedure splitStrings(source: string; delimiterPosition: integer; delimiterLength: integer; var destFirstString: string; var destSecondString: string);
 var
-  _lenghtSource: integer;
+  _lengthSource: integer;
   _lengthDestSecondString: integer;
   _lastPositionOfDelimiter: integer;
 begin
-  _lenghtSource := Length(source);
+  _lengthSource := Length(source);
   _lastPositionOfDelimiter := delimiterPosition + delimiterLength;
-  if _lenghtSource > _lastPositionOfDelimiter then
+  if _lengthSource > _lastPositionOfDelimiter then
   begin
-    _lengthDestSecondString := _lenghtSource - _lastPositionOfDelimiter;
+    _lengthDestSecondString := (_lengthSource - _lastPositionOfDelimiter) + 1;
     destFirstString := Copy(source, 0, delimiterPosition - 1);
-    destSecondString := Copy(source, _lastPositionOfDelimiter + 1, _lengthDestSecondString);
+    destSecondString := Copy(source, _lastPositionOfDelimiter, _lengthDestSecondString);
   end
   else
   begin
@@ -1630,6 +1919,69 @@ begin
   Result := status_asString;
 end;
 
+function getSchemaOfType(AType: PTypeInfo): string;
+var
+  ctx: TRTTIContext;
+  rttiType: TRttiType;
+  resultList: TStringList;
+
+  procedure ProcessRecord(aType: TRttiType; indent: string);
+  var
+    subField: TRttiField;
+    subFieldType: PTypeInfo;
+    subType: TRttiType;
+    elementType: PTypeInfo;
+  begin
+    for subField in aType.GetFields do
+    begin
+      subFieldType := subField.FieldType.Handle;
+
+      case subFieldType.Kind of
+        tkRecord:
+          begin
+            resultList.Add(indent + subField.Name + ': Record');
+            ProcessRecord(ctx.GetType(subFieldType), indent + '  '); // Ricorsione
+          end;
+        tkDynArray:
+          begin
+            // Prendi il tipo degli elementi dell'array
+            elementType := GetTypeData(subFieldType)^.elType2^;
+            if Assigned(elementType) then
+            begin
+              resultList.Add(indent + subField.Name + ': Array of ' + string(elementType.Name));
+
+              // Se gli elementi sono record, esplorali
+              subType := ctx.GetType(elementType);
+              if (subType <> nil) and (subType.TypeKind = tkRecord) then
+              begin
+                resultList.Add(indent + '  (Array Content): Record');
+                ProcessRecord(subType, indent + '    ');
+              end;
+            end
+            else
+              resultList.Add(indent + subField.Name + ': Array of Unknown');
+          end;
+      else
+        resultList.Add(indent + subField.Name + ': ' + subField.FieldType.ToString);
+      end;
+    end;
+  end;
+
+begin
+  resultList := TStringList.Create;
+  try
+    rttiType := ctx.GetType(AType);
+    if Assigned(rttiType) then
+    begin
+      resultList.Add(rttiType.Name + ': Record');
+      ProcessRecord(rttiType, '  ');
+    end;
+    Result := resultList.Text;
+  finally
+    resultList.Free;
+  end;
+end;
+
 procedure restartMyThread(var myThread: TMyThread);
 var
   _tempThread: TMyThread;
@@ -1691,14 +2043,14 @@ begin
     end;
 end;
 
-procedure tryToExecuteProcedure(myProcedure: TProcedure; raiseExceptionEnabled: boolean = false);
+procedure tryToExecuteProcedure(myProcedure: TProcedure; isRaiseExceptionEnabled: boolean = false);
 begin
   try
     executeProcedure(myProcedure);
   except
     on E: Exception do
     begin
-      if raiseExceptionEnabled then
+      if isRaiseExceptionEnabled then
       begin
         raise Exception.Create(E.Message);
       end;
@@ -1706,14 +2058,14 @@ begin
   end;
 end;
 
-procedure tryToExecuteProcedure(myProcedure: TAnonymousMethod; raiseExceptionEnabled: boolean = false);
+procedure tryToExecuteProcedure(myProcedure: TAnonymousMethod; isRaiseExceptionEnabled: boolean = false);
 begin
   try
     executeProcedure(myProcedure);
   except
     on E: Exception do
     begin
-      if raiseExceptionEnabled then
+      if isRaiseExceptionEnabled then
       begin
         raise Exception.Create(E.Message);
       end;
@@ -1721,14 +2073,14 @@ begin
   end;
 end;
 
-procedure tryToExecuteProcedure(myProcedure: TCallBack; raiseExceptionEnabled: boolean = false);
+procedure tryToExecuteProcedure(myProcedure: TCallBack; isRaiseExceptionEnabled: boolean = false);
 begin
   try
     executeProcedure(myProcedure);
   except
     on E: Exception do
     begin
-      if raiseExceptionEnabled then
+      if isRaiseExceptionEnabled then
       begin
         raise Exception.Create(E.Message);
       end;
@@ -1767,7 +2119,6 @@ begin
   end;
 end;
 
-
 function myDefault(typeAsString: string): Variant;
 var
   value: Variant;
@@ -1794,6 +2145,83 @@ begin
   end;
 
   Result := value;
+end;
+
+function getResizedTValue(value: TValue; maxLength: double): TValue;
+var
+  _string: string;
+begin
+  case value.Kind of
+    tkInteger, tkInt64:
+      begin
+        if value.AsInteger >= maxLength then
+        begin
+          Result := TValue.From<Integer>(trunc(maxLength));
+        end
+        else
+        begin
+          Result := value.AsInteger;
+        end;
+      end;
+    tkFloat:
+      begin
+        if value.AsExtended >= maxLength then
+        begin
+          Result := TValue.From<Double>(maxLength);
+        end
+        else
+        begin
+          Result := value.AsExtended;
+        end;
+      end;
+    tkString, tkLString, tkWString, tkUString:
+      begin
+        _string := value.AsString;
+        _string := Copy(_string, 1, trunc(maxLength));
+        Result := TValue.From<string>(_string);
+      end;
+  else
+    begin
+      Result := value;
+    end;
+  end;
+end;
+
+function getDefaultTValue(AType: TRttiType): TValue;
+begin
+  case AType.TypeKind of
+    tkString, tkLString, tkWString, tkUString:
+      Result := TValue.From<string>('');
+    tkInteger, tkInt64:
+      Result := TValue.From<Integer>(0);
+    tkFloat:
+      Result := TValue.From<Double>(0.0);
+    tkEnumeration:
+      if AType.Handle = TypeInfo(Boolean) then
+        Result := TValue.From<Boolean>(false);
+  end;
+end;
+
+function checkIfTValueIsEmpty(const AValue: TValue): Boolean;
+begin
+  case AValue.Kind of
+    tkInteger, tkInt64:
+      Result := AValue.AsInteger = 0;
+    tkFloat:
+      Result := AValue.AsExtended = 0;
+    tkString, tkLString, tkWString, tkUString:
+      Result := AValue.AsString = '';
+    tkEnumeration:
+      Result := AValue.AsBoolean = False;
+  else
+    Result := False;
+  end;
+end;
+
+function myIsDebuggerPresent: boolean;
+begin
+{$warn SYMBOL_PLATFORM OFF}
+  Result := System.DebugHook <> 0;
 end;
 
 end.

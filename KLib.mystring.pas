@@ -34,7 +34,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 }
 
-unit KLib.MyString;
+unit KLib.mystring;
 
 interface
 
@@ -42,11 +42,11 @@ uses
   KLib.Constants;
 
 type
-  myString = type string;
+  mystring = type string;
 
-  TMyStringHelper = record helper for myString
+  TMyStringHelper = record helper for mystring
     procedure setParamAsDoubleQuotedDate(paramName: string; value: TDateTime;
-      caseSensitive: boolean = false);
+      caseSensitive: boolean = false; formatting: string = DATE_FORMAT);
     procedure setParamAsDoubleQuotedDateTime(paramName: string;
       value: TDateTime; caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
     procedure setParamAsDoubleQuotedInteger(paramName: string; value: integer; caseSensitive: boolean = false);
@@ -56,7 +56,7 @@ type
       caseSensitive: boolean = false);
 
     procedure setParamAsSingleQuotedDate(paramName: string; value: TDateTime;
-      caseSensitive: boolean = false);
+      caseSensitive: boolean = false; formatting: string = DATE_FORMAT);
     procedure setParamAsSingleQuotedDateTime(paramName: string;
       value: TDateTime; caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
     procedure setParamAsSingleQuotedInteger(paramName: string; value: integer; caseSensitive: boolean = false);
@@ -66,7 +66,7 @@ type
       caseSensitive: boolean = false);
 
     procedure setParamAsDate(paramName: string; value: TDateTime;
-      caseSensitive: boolean = false);
+      caseSensitive: boolean = false; formatting: string = DATE_FORMAT);
     procedure setParamAsDateTime(paramName: string; value: TDateTime;
       caseSensitive: boolean = false; formatting: string = DATETIME_FORMAT);
     procedure setParamAsInteger(paramName: string; value: integer; caseSensitive: boolean = false);
@@ -75,12 +75,13 @@ type
     procedure setParamAsString(paramName: string; value: string;
       caseSensitive: boolean = false);
 
+    procedure escapeHTML;
     procedure escapeXML;
     procedure escapeJSON;
     procedure doubleQuote;
     procedure singleQuote;
     procedure quote(quotedCharacter: Char);
-    procedure extractString(quoteString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED);
+    procedure extractString(quoteString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED);
     procedure dequote;
     procedure removeLineBreaks(substituteString: string = SPACE_STRING);
     procedure fixedWordWrap(fixedLen: Integer);
@@ -90,6 +91,8 @@ type
     function getNumberOfLines: integer;
     function checkIfContainsSubStringNoCaseSensitive(subString: string): boolean;
     function checkIfContainsSubString(subString: string; caseSensitiveSearch: boolean = true): boolean;
+
+    procedure saveToFile(fileName: string);
   end;
 
 implementation
@@ -99,9 +102,9 @@ uses
   System.SysUtils;
 
 procedure TMyStringHelper.setParamAsDoubleQuotedDate(paramName: string; value: TDateTime;
-  caseSensitive: boolean = false);
+  caseSensitive: boolean = false; formatting: string = DATE_FORMAT);
 begin
-  setParamAsDoubleQuotedDateTime(paramName, value, caseSensitive, DATE_FORMAT);
+  setParamAsDoubleQuotedDateTime(paramName, value, caseSensitive, formatting);
 end;
 
 procedure TMyStringHelper.setParamAsDoubleQuotedDateTime(paramName: string;
@@ -140,9 +143,9 @@ begin
 end;
 
 procedure TMyStringHelper.setParamAsSingleQuotedDate(paramName: string; value: TDateTime;
-  caseSensitive: boolean = false);
+  caseSensitive: boolean = false; formatting: string = DATE_FORMAT);
 begin
-  setParamAsSingleQuotedDateTime(paramName, value, caseSensitive, DATE_FORMAT);
+  setParamAsSingleQuotedDateTime(paramName, value, caseSensitive, formatting);
 end;
 
 procedure TMyStringHelper.setParamAsSingleQuotedDateTime(paramName: string;
@@ -181,9 +184,9 @@ begin
 end;
 
 procedure TMyStringHelper.setParamAsDate(paramName: string; value: TDateTime;
-  caseSensitive: boolean = false);
+  caseSensitive: boolean = false; formatting: string = DATE_FORMAT);
 begin
-  setParamAsDateTime(paramName, value, caseSensitive);
+  setParamAsDateTime(paramName, value, caseSensitive, formatting);
 end;
 
 procedure TMyStringHelper.setParamAsDateTime(paramName: string; value: TDateTime;
@@ -233,6 +236,11 @@ begin
   end;
 end;
 
+procedure TMyStringHelper.escapeHTML;
+begin
+  Self := getEscapedHTMLString(Self);
+end;
+
 procedure TMyStringHelper.escapeXML;
 begin
   Self := getEscapedXMLString(Self);
@@ -258,9 +266,9 @@ begin
   Self := getQuotedString(Self, quotedCharacter);
 end;
 
-procedure TMyStringHelper.extractString(quoteString: string; raiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED);
+procedure TMyStringHelper.extractString(quoteString: string; isRaiseExceptionEnabled: boolean = RAISE_EXCEPTION_DISABLED);
 begin
-  Self := getExtractedString(Self, quoteString, raiseExceptionEnabled);
+  Self := getExtractedString(Self, quoteString, isRaiseExceptionEnabled);
 end;
 
 procedure TMyStringHelper.dequote;
@@ -301,6 +309,11 @@ end;
 function TMyStringHelper.checkIfContainsSubString(subString: string; caseSensitiveSearch: boolean = true): boolean;
 begin
   Result := checkIfMainStringContainsSubString(Self, subString, caseSensitiveSearch);
+end;
+
+procedure TMyStringHelper.saveToFile(fileName: string);
+begin
+  KLib.Utils.saveToFile(Self, fileName);
 end;
 
 end.
